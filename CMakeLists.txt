@@ -8,7 +8,7 @@ file(GLOB_RECURSE SrcFiles CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE HeaderFiles CONFIGURE_DEPENDS include/*.h include/*.hpp)
 set(GLAD_SrcFile dependencies/glad/src/glad.c)
 
-add_library(VitraePluginOpenGL ${SrcFiles} ${HeaderFiles} ${GLAD_SrcFile})
+add_library(VitraePluginOpenGL SHARED ${SrcFiles} ${HeaderFiles} ${GLAD_SrcFile})
 target_compile_features(VitraePluginOpenGL PUBLIC cxx_std_20)
 target_include_directories(VitraePluginOpenGL PUBLIC include)
 
