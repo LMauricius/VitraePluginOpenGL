@@ -6,9 +6,10 @@
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Dynamic/VariantScope.hpp"
 #include "Vitrae/Params/Standard.hpp"
-#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
+#include "VitraePluginOpenGL/Bits/RenderBits.hpp"
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
 #include "VitraePluginOpenGL/Specializations/Mesh.hpp"
+#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 #include "VitraePluginOpenGL/Specializations/ShaderCompilation.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
@@ -245,8 +246,34 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                 }
             }
 
-            // generic function for all passes
-            auto runDerivationalPass = [&]() {
+            // Setup now for single-pass modes
+            {
+                MMETER_SCOPE_PROFILER("Blend setup");
+
+                stateSetBlending(m_params.rasterizing);
+
+                switch (m_params.rasterizing.rasterizingMode) {
+                case RasterizingMode::DerivationalFillCenters:
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    break;
+                case RasterizingMode::DerivationalTraceEdges:
+                    if (m_params.rasterizing.smoothTracing) {
+                        glDepthMask(GL_FALSE);
+                        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                        glEnable(GL_BLEND);
+                        glLineWidth(1.5);
+                    } else {
+                        glLineWidth(1.0);
+                    }
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                    break;
+                case RasterizingMode::DerivationalDotVertices:
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                    break;
+                }
+            }
+
+            {
                 MMETER_SCOPE_PROFILER("Pass");
 
                 // render the scene
@@ -407,99 +434,53 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                                                &(mat_mvp[0][0]));
                         }
 
-                        p_shape->rasterize();
+                        switch (m_params.rasterizing.rasterizingMode) {
+                        case RasterizingMode::DerivationalFillCenters:
+                        case RasterizingMode::DerivationalTraceEdges:
+                        case RasterizingMode::DerivationalDotVertices:
+                            // Everything is already setup
+                            p_shape->rasterize();
+                            break;
+                        }
+
+                        // render filled polygons (before edges)
+                        switch (m_params.rasterizing.rasterizingMode) {
+                        case RasterizingMode::DerivationalFillEdges:
+                        case RasterizingMode::DerivationalFillVertices:
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                            p_shape->rasterize();
+                            break;
+                        }
+
+                        // render edges (after polygons and/or before vertices)
+                        switch (m_params.rasterizing.rasterizingMode) {
+                        case RasterizingMode::DerivationalFillEdges:
+                        case RasterizingMode::DerivationalTraceVertices:
+                            if (m_params.rasterizing.smoothTracing) {
+                                glDepthMask(GL_FALSE);
+                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                                glEnable(GL_BLEND);
+                                glLineWidth(1.5);
+                            } else {
+                                glLineWidth(1.0);
+                            }
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                            p_shape->rasterize();
+                            break;
+                        }
+
+                        // render vertices (after polygons and/or edges)
+                        switch (m_params.rasterizing.rasterizingMode) {
+                        case RasterizingMode::DerivationalFillVertices:
+                        case RasterizingMode::DerivationalTraceVertices:
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                            p_shape->rasterize();
+                            break;
+                        }
                     }
                 }
 
                 glUseProgram(0);
-            };
-
-            auto getBlending = [](BlendingFunction blending) {
-                switch (blending) {
-                case BlendingFunction::Zero:
-                    return GL_ZERO;
-                case BlendingFunction::One:
-                    return GL_ONE;
-                case BlendingFunction::SourceColor:
-                    return GL_SRC_COLOR;
-                case BlendingFunction::OneMinusSourceColor:
-                    return GL_ONE_MINUS_SRC_COLOR;
-                case BlendingFunction::DestinationColor:
-                    return GL_DST_COLOR;
-                case BlendingFunction::OneMinusDestinationColor:
-                    return GL_ONE_MINUS_DST_COLOR;
-                case BlendingFunction::SourceAlpha:
-                    return GL_SRC_ALPHA;
-                case BlendingFunction::OneMinusSourceAlpha:
-                    return GL_ONE_MINUS_SRC_ALPHA;
-                case BlendingFunction::DestinationAlpha:
-                    return GL_DST_ALPHA;
-                case BlendingFunction::OneMinusDestinationAlpha:
-                    return GL_ONE_MINUS_DST_ALPHA;
-                case BlendingFunction::ConstantColor:
-                    return GL_CONSTANT_COLOR;
-                case BlendingFunction::OneMinusConstantColor:
-                    return GL_ONE_MINUS_CONSTANT_COLOR;
-                case BlendingFunction::ConstantAlpha:
-                    return GL_CONSTANT_ALPHA;
-                case BlendingFunction::OneMinusConstantAlpha:
-                    return GL_ONE_MINUS_CONSTANT_ALPHA;
-                case BlendingFunction::SourceAlphaSaturated:
-                    return GL_SRC_ALPHA_SATURATE;
-                }
-                return GL_ZERO;
-            };
-            auto setBlending = [&](const RasterizingSetupParams &params) {
-                glDepthMask(params.writeDepth);
-                glBlendFunc(getBlending(params.sourceBlending),
-                            getBlending(params.destinationBlending));
-                if (params.sourceBlending == BlendingFunction::One &&
-                    params.destinationBlending == BlendingFunction::Zero) {
-                    glDisable(GL_BLEND);
-                } else {
-                    glEnable(GL_BLEND);
-                }
-            };
-
-            // render filled polygons
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillCenters:
-            case RasterizingMode::DerivationalFillEdges:
-            case RasterizingMode::DerivationalFillVertices:
-                setBlending(m_params.rasterizing);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                runDerivationalPass();
-                break;
-            }
-
-            // render edges
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillEdges:
-            case RasterizingMode::DerivationalTraceEdges:
-            case RasterizingMode::DerivationalTraceVertices:
-                if (m_params.rasterizing.smoothTracing) {
-                    glDepthMask(GL_FALSE);
-                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                    glEnable(GL_BLEND);
-                    glLineWidth(1.5);
-                } else {
-                    setBlending(m_params.rasterizing);
-                    glLineWidth(1.0);
-                }
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                runDerivationalPass();
-                break;
-            }
-
-            // render vertices
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillVertices:
-            case RasterizingMode::DerivationalTraceVertices:
-            case RasterizingMode::DerivationalDotVertices:
-                setBlending(m_params.rasterizing);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                runDerivationalPass();
-                break;
             }
 
             glDepthMask(GL_TRUE);
