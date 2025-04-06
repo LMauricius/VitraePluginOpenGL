@@ -5,8 +5,9 @@
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Dynamic/VariantScope.hpp"
 #include "Vitrae/Params/Standard.hpp"
-#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
+#include "VitraePluginOpenGL/Bits/RenderBits.hpp"
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
+#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 #include "VitraePluginOpenGL/Specializations/ShaderCompilation.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
@@ -207,7 +208,7 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
 
     // render
     {
-        MMETER_SCOPE_PROFILER("Rendering (multipass)");
+        MMETER_SCOPE_PROFILER("Rendering");
 
         switch (m_params.rasterizing.rasterizingMode) {
         // derivational methods (all methods for now)
@@ -219,118 +220,34 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
         case RasterizingMode::DerivationalDotVertices: {
             frame.enterRender({0.0f, 0.0f}, {1.0f, 1.0f});
 
-            {
-                MMETER_SCOPE_PROFILER("OGL setup");
+            stateSetupRasterizing(m_params.rasterizing);
 
-                glEnable(GL_DEPTH_TEST);
-                glDepthFunc(GL_LESS);
+            // run the data generator
 
-                switch (m_params.rasterizing.cullingMode) {
-                case CullingMode::None:
-                    glDisable(GL_CULL_FACE);
-                    break;
-                case CullingMode::Backface:
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_BACK);
-                    break;
-                case CullingMode::Frontface:
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_FRONT);
-                    break;
+            RenderCallback renderCallback = [glModelMatrixUniformLocation,
+                                             glDisplayMatrixUniformLocation,
+                                             glMVPMatrixUniformLocation, &mat_display, p_shape,
+                                             &rend,
+                                             &m_params = m_params](const glm::mat4 &transform) {
+                if (glModelMatrixUniformLocation != -1) {
+                    glUniformMatrix4fv(glModelMatrixUniformLocation, 1, GL_FALSE,
+                                       &(transform[0][0]));
+                }
+                if (glDisplayMatrixUniformLocation != -1) {
+                    glUniformMatrix4fv(glDisplayMatrixUniformLocation, 1, GL_FALSE,
+                                       &(mat_display[0][0]));
+                }
+                if (glMVPMatrixUniformLocation != -1) {
+                    glm::mat4 mat_mvp = mat_display * transform;
+                    glUniformMatrix4fv(glMVPMatrixUniformLocation, 1, GL_FALSE, &(mat_mvp[0][0]));
                 }
 
-                // smoothing
-                if (m_params.rasterizing.smoothFilling) {
-                    glEnable(GL_POLYGON_SMOOTH);
-                    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-                } else {
-                    glDisable(GL_POLYGON_SMOOTH);
-                }
-                if (m_params.rasterizing.smoothTracing) {
-                    glEnable(GL_LINE_SMOOTH);
-                    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-                } else {
-                    glDisable(GL_LINE_SMOOTH);
-                }
-            }
-
-            // generic function for all passes
-            auto runDerivationalPass = [&]() {
-                MMETER_SCOPE_PROFILER("Render data");
-
-                // run the data generator
-
-                RenderCallback renderCallback = [glModelMatrixUniformLocation,
-                                                 glDisplayMatrixUniformLocation,
-                                                 glMVPMatrixUniformLocation, &mat_display, p_shape,
-                                                 &rend](const glm::mat4 &transform) {
-                    if (glModelMatrixUniformLocation != -1) {
-                        glUniformMatrix4fv(glModelMatrixUniformLocation, 1, GL_FALSE,
-                                           &(transform[0][0]));
-                    }
-                    if (glDisplayMatrixUniformLocation != -1) {
-                        glUniformMatrix4fv(glDisplayMatrixUniformLocation, 1, GL_FALSE,
-                                           &(mat_display[0][0]));
-                    }
-                    if (glMVPMatrixUniformLocation != -1) {
-                        glm::mat4 mat_mvp = mat_display * transform;
-                        glUniformMatrix4fv(glMVPMatrixUniformLocation, 1, GL_FALSE,
-                                           &(mat_mvp[0][0]));
-                    }
-
-                    p_shape->rasterize();
-                };
-
-                m_params.dataGenerator(args, renderCallback);
-
-                glUseProgram(0);
+                rasterizeShape(*p_shape, m_params.rasterizing);
             };
 
-            // render filled polygons
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillCenters:
-            case RasterizingMode::DerivationalFillEdges:
-            case RasterizingMode::DerivationalFillVertices:
-                glDepthMask(GL_TRUE);
-                glDisable(GL_BLEND);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                runDerivationalPass();
-                break;
-            }
+            m_params.dataGenerator(args, renderCallback);
 
-            // render edges
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillEdges:
-            case RasterizingMode::DerivationalTraceEdges:
-            case RasterizingMode::DerivationalTraceVertices:
-                if (m_params.rasterizing.smoothTracing) {
-                    glDepthMask(GL_FALSE);
-                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                    glEnable(GL_BLEND);
-                    glLineWidth(1.5);
-                } else {
-                    glDepthMask(GL_TRUE);
-                    glDisable(GL_BLEND);
-                    glLineWidth(1.0);
-                }
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                runDerivationalPass();
-                break;
-            }
-
-            // render vertices
-            switch (m_params.rasterizing.rasterizingMode) {
-            case RasterizingMode::DerivationalFillVertices:
-            case RasterizingMode::DerivationalTraceVertices:
-            case RasterizingMode::DerivationalDotVertices:
-                glDepthMask(GL_TRUE);
-                glDisable(GL_BLEND);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                runDerivationalPass();
-                break;
-            }
-
-            glDepthMask(GL_TRUE);
+            glUseProgram(0);
 
             frame.exitRender();
             break;

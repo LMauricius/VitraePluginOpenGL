@@ -199,7 +199,7 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
     bool needsRebuild = false;
 
     {
-        MMETER_SCOPE_PROFILER("Rendering (multipass)");
+        MMETER_SCOPE_PROFILER("Rendering");
 
         switch (m_params.rasterizing.rasterizingMode) {
         // derivational methods (all methods for now)
@@ -211,279 +211,169 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
         case RasterizingMode::DerivationalDotVertices: {
             frame.enterRender({0.0f, 0.0f}, {1.0f, 1.0f});
 
-            {
-                MMETER_SCOPE_PROFILER("OGL setup");
+            stateSetupRasterizing(m_params.rasterizing);
 
-                glEnable(GL_DEPTH_TEST);
-                glDepthFunc(GL_LESS);
+            // render the scene
+            // iterate over shaders
+            dynasma::FirmPtr<const Material> p_currentMaterial;
+            dynasma::FirmPtr<CompiledGLSLShader> p_currentShader;
+            std::size_t currentShaderHash = 0;
+            GLint glModelMatrixUniformLocation;
+            GLint glMVPMatrixUniformLocation;
+            GLint glDisplayMatrixUniformLocation;
 
-                switch (m_params.rasterizing.cullingMode) {
-                case CullingMode::None:
-                    glDisable(GL_CULL_FACE);
-                    break;
-                case CullingMode::Backface:
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_BACK);
-                    break;
-                case CullingMode::Frontface:
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_FRONT);
-                    break;
+            for (auto p_modelProp : sortedModelProps) {
+                // Setup the shape to render
+                dynasma::FirmPtr<Shape> p_shape;
+                glm::mat4 mat_model;
+                glm::mat4 mat_mvp;
+                {
+                    MMETER_SCOPE_PROFILER("Matrix calculation");
+                    mat_model = p_modelProp->transform.getModelMatrix();
+                    mat_mvp = mat_display * mat_model;
+                }
+                {
+                    MMETER_SCOPE_PROFILER("LoD selection");
+
+                    constexpr glm::vec4 sizedPoint = {1.0, 1.0, 1.0, 1.0};
+                    constexpr glm::vec4 zero = {0.0, 0.0, 0.0, 1.0};
+                    glm::vec4 projPoint = mat_mvp * sizedPoint;
+                    glm::vec4 projZero = mat_mvp * zero;
+                    glm::vec2 visiblePointSize =
+                        glm::vec2(projPoint / projPoint.w - projZero / projZero.w) * frameSize;
+
+                    LoDContext lodCtx = {
+                        .closestPointScaling = std::max(visiblePointSize.x, visiblePointSize.y),
+                    };
+
+                    p_shape = p_modelProp->p_model->getBestForm(purposeId, lodParams, lodCtx);
                 }
 
-                // smoothing
-                if (m_params.rasterizing.smoothFilling) {
-                    glEnable(GL_POLYGON_SMOOTH);
-                    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-                } else {
-                    glDisable(GL_POLYGON_SMOOTH);
-                }
-                if (m_params.rasterizing.smoothTracing) {
-                    glEnable(GL_LINE_SMOOTH);
-                    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-                } else {
-                    glDisable(GL_LINE_SMOOTH);
-                }
-            }
+                dynasma::FirmPtr<const Material> p_nextMaterial =
+                    p_modelProp->p_model->getMaterial();
 
-            // Setup now for single-pass modes
-            {
-                MMETER_SCOPE_PROFILER("Blend setup");
+                if (p_nextMaterial != p_currentMaterial) {
+                    MMETER_SCOPE_PROFILER("Material iteration");
 
-                stateSetBlending(m_params.rasterizing);
+                    p_currentMaterial = p_nextMaterial;
 
-                switch (m_params.rasterizing.rasterizingMode) {
-                case RasterizingMode::DerivationalFillCenters:
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                    break;
-                case RasterizingMode::DerivationalTraceEdges:
-                    if (m_params.rasterizing.smoothTracing) {
-                        glDepthMask(GL_FALSE);
-                        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                        glEnable(GL_BLEND);
-                        glLineWidth(1.5);
-                    } else {
-                        glLineWidth(1.0);
-                    }
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                    break;
-                case RasterizingMode::DerivationalDotVertices:
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                    break;
-                }
-            }
+                    if (p_currentMaterial->getParamAliases().hash() != currentShaderHash) {
+                        MMETER_SCOPE_PROFILER("Shader change");
 
-            {
-                MMETER_SCOPE_PROFILER("Pass");
+                        {
+                            MMETER_SCOPE_PROFILER("Shader loading");
 
-                // render the scene
-                // iterate over shaders
-                dynasma::FirmPtr<const Material> p_currentMaterial;
-                dynasma::FirmPtr<CompiledGLSLShader> p_currentShader;
-                std::size_t currentShaderHash = 0;
-                GLint glModelMatrixUniformLocation;
-                GLint glMVPMatrixUniformLocation;
-                GLint glDisplayMatrixUniformLocation;
+                            currentShaderHash = p_currentMaterial->getParamAliases().hash();
 
-                for (auto p_modelProp : sortedModelProps) {
-                    // Setup the shape to render
-                    dynasma::FirmPtr<Shape> p_shape;
-                    glm::mat4 mat_model;
-                    glm::mat4 mat_mvp;
-                    {
-                        MMETER_SCOPE_PROFILER("Matrix calculation");
-                        mat_model = p_modelProp->transform.getModelMatrix();
-                        mat_mvp = mat_display * mat_model;
-                    }
-                    {
-                        MMETER_SCOPE_PROFILER("LoD selection");
+                            const ParamAliases *p_aliaseses[] = {
+                                &p_currentMaterial->getParamAliases(), &args.aliases};
 
-                        constexpr glm::vec4 sizedPoint = {1.0, 1.0, 1.0, 1.0};
-                        constexpr glm::vec4 zero = {0.0, 0.0, 0.0, 1.0};
-                        glm::vec4 projPoint = mat_mvp * sizedPoint;
-                        glm::vec4 projZero = mat_mvp * zero;
-                        glm::vec2 visiblePointSize =
-                            glm::vec2(projPoint / projPoint.w - projZero / projZero.w) * frameSize;
+                            ParamAliases aliases(p_aliaseses);
 
-                        LoDContext lodCtx = {
-                            .closestPointScaling = std::max(visiblePointSize.x, visiblePointSize.y),
-                        };
+                            p_currentShader = shaderCacher.retrieve_asset(
+                                {CompiledGLSLShader::SurfaceShaderParams(
+                                    aliases, m_params.rasterizing.vertexPositionOutputPropertyName,
+                                    *frame.getRenderComponents(), m_root)});
 
-                        p_shape = p_modelProp->p_model->getBestForm(purposeId, lodParams, lodCtx);
-                    }
+                            // Store pipeline property specs
 
-                    dynasma::FirmPtr<const Material> p_nextMaterial =
-                        p_modelProp->p_model->getMaterial();
+                            using ListConvPair = std::pair<const ParamList *, ParamList *>;
 
-                    if (p_nextMaterial != p_currentMaterial) {
-                        MMETER_SCOPE_PROFILER("Material iteration");
-
-                        p_currentMaterial = p_nextMaterial;
-
-                        if (p_currentMaterial->getParamAliases().hash() != currentShaderHash) {
-                            MMETER_SCOPE_PROFILER("Shader change");
-
-                            {
-                                MMETER_SCOPE_PROFILER("Shader loading");
-
-                                currentShaderHash = p_currentMaterial->getParamAliases().hash();
-
-                                const ParamAliases *p_aliaseses[] = {
-                                    &p_currentMaterial->getParamAliases(), &args.aliases};
-
-                                ParamAliases aliases(p_aliaseses);
-
-                                p_currentShader = shaderCacher.retrieve_asset(
-                                    {CompiledGLSLShader::SurfaceShaderParams(
-                                        aliases,
-                                        m_params.rasterizing.vertexPositionOutputPropertyName,
-                                        *frame.getRenderComponents(), m_root)});
-
-                                // Store pipeline property specs
-
-                                using ListConvPair = std::pair<const ParamList *, ParamList *>;
-
-                                for (auto [p_specs, p_targetSpecs] :
-                                     {ListConvPair{&p_currentShader->inputSpecs,
-                                                   &specsContainer.inputSpecs},
-                                      ListConvPair{&p_currentShader->filterSpecs,
-                                                   &specsContainer.filterSpecs},
-                                      ListConvPair{&p_currentShader->consumingSpecs,
-                                                   &specsContainer.consumingSpecs}}) {
-                                    for (auto [nameId, spec] : p_specs->getMappedSpecs()) {
-                                        if (p_currentMaterial->getProperties().find(nameId) ==
-                                                p_currentMaterial->getProperties().end() &&
-                                            nameId != StandardParam::mat_model.name &&
-                                            nameId != StandardParam::mat_display.name &&
-                                            nameId != StandardParam::mat_mvp.name &&
-                                            p_targetSpecs->getMappedSpecs().find(nameId) ==
-                                                p_targetSpecs->getMappedSpecs().end()) {
-                                            p_targetSpecs->insert_back(spec);
-                                            needsRebuild = true;
-                                        }
+                            for (auto [p_specs, p_targetSpecs] :
+                                 {ListConvPair{&p_currentShader->inputSpecs,
+                                               &specsContainer.inputSpecs},
+                                  ListConvPair{&p_currentShader->filterSpecs,
+                                               &specsContainer.filterSpecs},
+                                  ListConvPair{&p_currentShader->consumingSpecs,
+                                               &specsContainer.consumingSpecs}}) {
+                                for (auto [nameId, spec] : p_specs->getMappedSpecs()) {
+                                    if (p_currentMaterial->getProperties().find(nameId) ==
+                                            p_currentMaterial->getProperties().end() &&
+                                        nameId != StandardParam::mat_model.name &&
+                                        nameId != StandardParam::mat_display.name &&
+                                        nameId != StandardParam::mat_mvp.name &&
+                                        p_targetSpecs->getMappedSpecs().find(nameId) ==
+                                            p_targetSpecs->getMappedSpecs().end()) {
+                                        p_targetSpecs->insert_back(spec);
+                                        needsRebuild = true;
                                     }
                                 }
-                            }
-
-                            if (!needsRebuild) {
-                                MMETER_SCOPE_PROFILER("Shader setup");
-
-                                // OpenGL - use the program
-                                glUseProgram(p_currentShader->programGLName);
-
-                                // Aliases should've already been taken into account, so use
-                                // properties directly
-                                VariantScope &directProperties =
-                                    args.properties.getUnaliasedScope();
-
-                                // set the 'environmental' uniforms
-                                // skip those that will be set by the material
-                                if (auto it = p_currentShader->uniformSpecs.find(
-                                        StandardParam::mat_model.name);
-                                    it != p_currentShader->uniformSpecs.end()) {
-                                    glModelMatrixUniformLocation = (*it).second.location;
-                                } else {
-                                    glModelMatrixUniformLocation = -1;
-                                }
-                                if (auto it = p_currentShader->uniformSpecs.find(
-                                        StandardParam::mat_display.name);
-                                    it != p_currentShader->uniformSpecs.end()) {
-                                    glDisplayMatrixUniformLocation = (*it).second.location;
-                                } else {
-                                    glDisplayMatrixUniformLocation = -1;
-                                }
-                                if (auto it = p_currentShader->uniformSpecs.find(
-                                        StandardParam::mat_mvp.name);
-                                    it != p_currentShader->uniformSpecs.end()) {
-                                    glMVPMatrixUniformLocation = (*it).second.location;
-                                } else {
-                                    glMVPMatrixUniformLocation = -1;
-                                }
-
-                                p_currentShader->setupNonMaterialProperties(rend, directProperties,
-                                                                            *p_currentMaterial);
                             }
                         }
 
                         if (!needsRebuild) {
-                            p_currentShader->setupMaterialProperties(rend, *p_currentMaterial);
+                            MMETER_SCOPE_PROFILER("Shader setup");
+
+                            // OpenGL - use the program
+                            glUseProgram(p_currentShader->programGLName);
+
+                            // Aliases should've already been taken into account, so use
+                            // properties directly
+                            VariantScope &directProperties = args.properties.getUnaliasedScope();
+
+                            // set the 'environmental' uniforms
+                            // skip those that will be set by the material
+                            if (auto it = p_currentShader->uniformSpecs.find(
+                                    StandardParam::mat_model.name);
+                                it != p_currentShader->uniformSpecs.end()) {
+                                glModelMatrixUniformLocation = (*it).second.location;
+                            } else {
+                                glModelMatrixUniformLocation = -1;
+                            }
+                            if (auto it = p_currentShader->uniformSpecs.find(
+                                    StandardParam::mat_display.name);
+                                it != p_currentShader->uniformSpecs.end()) {
+                                glDisplayMatrixUniformLocation = (*it).second.location;
+                            } else {
+                                glDisplayMatrixUniformLocation = -1;
+                            }
+                            if (auto it =
+                                    p_currentShader->uniformSpecs.find(StandardParam::mat_mvp.name);
+                                it != p_currentShader->uniformSpecs.end()) {
+                                glMVPMatrixUniformLocation = (*it).second.location;
+                            } else {
+                                glMVPMatrixUniformLocation = -1;
+                            }
+
+                            p_currentShader->setupNonMaterialProperties(rend, directProperties,
+                                                                        *p_currentMaterial);
                         }
-                    }
-
-                    // Load the shape
-                    {
-                        MMETER_SCOPE_PROFILER("Shape loading");
-
-                        p_shape->prepareComponents(p_currentShader->vertexComponentSpecs);
-                        p_shape->loadToGPU(rend);
                     }
 
                     if (!needsRebuild) {
-                        MMETER_SCOPE_PROFILER("Mesh draw");
-
-                        if (glModelMatrixUniformLocation != -1) {
-                            glUniformMatrix4fv(glModelMatrixUniformLocation, 1, GL_FALSE,
-                                               &(mat_model[0][0]));
-                        }
-                        if (glDisplayMatrixUniformLocation != -1) {
-                            glUniformMatrix4fv(glDisplayMatrixUniformLocation, 1, GL_FALSE,
-                                               &(mat_display[0][0]));
-                        }
-                        if (glMVPMatrixUniformLocation != -1) {
-                            glUniformMatrix4fv(glMVPMatrixUniformLocation, 1, GL_FALSE,
-                                               &(mat_mvp[0][0]));
-                        }
-
-                        switch (m_params.rasterizing.rasterizingMode) {
-                        case RasterizingMode::DerivationalFillCenters:
-                        case RasterizingMode::DerivationalTraceEdges:
-                        case RasterizingMode::DerivationalDotVertices:
-                            // Everything is already setup
-                            p_shape->rasterize();
-                            break;
-                        }
-
-                        // render filled polygons (before edges)
-                        switch (m_params.rasterizing.rasterizingMode) {
-                        case RasterizingMode::DerivationalFillEdges:
-                        case RasterizingMode::DerivationalFillVertices:
-                            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                            p_shape->rasterize();
-                            break;
-                        }
-
-                        // render edges (after polygons and/or before vertices)
-                        switch (m_params.rasterizing.rasterizingMode) {
-                        case RasterizingMode::DerivationalFillEdges:
-                        case RasterizingMode::DerivationalTraceVertices:
-                            if (m_params.rasterizing.smoothTracing) {
-                                glDepthMask(GL_FALSE);
-                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                                glEnable(GL_BLEND);
-                                glLineWidth(1.5);
-                            } else {
-                                glLineWidth(1.0);
-                            }
-                            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                            p_shape->rasterize();
-                            break;
-                        }
-
-                        // render vertices (after polygons and/or edges)
-                        switch (m_params.rasterizing.rasterizingMode) {
-                        case RasterizingMode::DerivationalFillVertices:
-                        case RasterizingMode::DerivationalTraceVertices:
-                            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                            p_shape->rasterize();
-                            break;
-                        }
+                        p_currentShader->setupMaterialProperties(rend, *p_currentMaterial);
                     }
                 }
 
-                glUseProgram(0);
+                // Load the shape
+                {
+                    MMETER_SCOPE_PROFILER("Shape loading");
+
+                    p_shape->prepareComponents(p_currentShader->vertexComponentSpecs);
+                    p_shape->loadToGPU(rend);
+                }
+
+                if (!needsRebuild) {
+                    MMETER_SCOPE_PROFILER("Mesh draw");
+
+                    if (glModelMatrixUniformLocation != -1) {
+                        glUniformMatrix4fv(glModelMatrixUniformLocation, 1, GL_FALSE,
+                                           &(mat_model[0][0]));
+                    }
+                    if (glDisplayMatrixUniformLocation != -1) {
+                        glUniformMatrix4fv(glDisplayMatrixUniformLocation, 1, GL_FALSE,
+                                           &(mat_display[0][0]));
+                    }
+                    if (glMVPMatrixUniformLocation != -1) {
+                        glUniformMatrix4fv(glMVPMatrixUniformLocation, 1, GL_FALSE,
+                                           &(mat_mvp[0][0]));
+                    }
+
+                    rasterizeShape(*p_shape, m_params.rasterizing);
+                }
             }
 
-            glDepthMask(GL_TRUE);
+            glUseProgram(0);
 
             frame.exitRender();
             break;

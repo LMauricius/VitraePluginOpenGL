@@ -87,6 +87,8 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
 
     frame.enterRender({0.0f, 0.0f}, {1.0f, 1.0f});
 
+    glDepthMask(GL_TRUE);
+
     glClearColor(m_color.r, m_color.g, m_color.b, m_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
