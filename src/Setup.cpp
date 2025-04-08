@@ -7,6 +7,7 @@
 #include "VitraePluginOpenGL/Specializations/Compositing/ClearRender.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/Compute.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/DataRender.hpp"
+#include "VitraePluginOpenGL/Specializations/Compositing/IndexRender.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/SceneRender.hpp"
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
 #include "VitraePluginOpenGL/Specializations/Mesh.hpp"
@@ -43,6 +44,7 @@ void setup(Vitrae::ComponentRoot &root)
     root.setComponent<      ShaderHeaderKeeper>(new  dynasma::NaiveKeeper<      ShaderHeaderKeeperSeed, std::allocator<      OpenGLShaderHeader>>());
     root.setComponent<ComposeSceneRenderKeeper>(new  dynasma::NaiveKeeper<ComposeSceneRenderKeeperSeed, std::allocator<OpenGLComposeSceneRender>>());
     root.setComponent< ComposeDataRenderKeeper>(new  dynasma::NaiveKeeper< ComposeDataRenderKeeperSeed, std::allocator< OpenGLComposeDataRender>>());
+    root.setComponent<ComposeIndexRenderKeeper>(new  dynasma::NaiveKeeper<ComposeIndexRenderKeeperSeed, std::allocator<OpenGLComposeIndexRender>>());
     root.setComponent<    ComposeComputeKeeper>(new  dynasma::NaiveKeeper<    ComposeComputeKeeperSeed, std::allocator<    OpenGLComposeCompute>>());
     root.setComponent<ComposeClearRenderKeeper>(new  dynasma::NaiveKeeper<ComposeClearRenderKeeperSeed, std::allocator<OpenGLComposeClearRender>>());
     root.setComponent<CompiledGLSLShaderCacher>(new  dynasma::BasicCacher<CompiledGLSLShaderCacherSeed, std::allocator<      CompiledGLSLShader>>());
