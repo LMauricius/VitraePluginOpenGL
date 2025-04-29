@@ -123,13 +123,6 @@ class OpenGLRenderer : public Renderer
                                                    GLConversionSpec &&newSpec);
     const GLConversionSpec &getTypeConversion(const TypeInfo &hostType);
 
-    /**
-     * @brief Automatically specified the gl type and conversion for a SharedBuffer type
-     * @tparam SharedBufferT the type of the shared buffer
-     * @throws GLSpecificationError if the type isn't trivially convertible
-     */
-    template <SharedBufferPtrInst SharedBufferT> void specifyBufferTypeAndConversionAuto();
-
     void specifyVertexBuffer(const ParamSpec &newElSpec) override;
     void specifyTextureSampler(StringView colorName) override;
 
@@ -159,96 +152,5 @@ class OpenGLRenderer : public Renderer
     // utility
     static void setRawBufferBinding(const RawSharedBuffer &buf, int bindingIndex);
 };
-
-template <SharedBufferPtrInst SharedBufferT>
-void OpenGLRenderer::specifyBufferTypeAndConversionAuto()
-{
-    using ElementT = SharedBufferT::ElementT;
-    using HeaderT = SharedBufferT::HeaderT;
-
-    GLTypeSpec typeSpec = GLTypeSpec{
-        .valueTypeName = "",
-        .opaqueTypeName = "",
-        .structBodySnippet = "",
-        .layout =
-            GLLayoutSpec{
-                .std140Size = 0,
-                .std140Alignment = 0,
-                .indexSize = 0,
-            },
-    };
-
-    if constexpr (SharedBufferT::HAS_HEADER) {
-        auto &headerConv = getTypeConversion(TYPE_INFO<HeaderT>);
-        auto &headerGlTypeSpec = headerConv.glTypeSpec;
-
-        if (!headerGlTypeSpec.structBodySnippet.empty()) {
-            typeSpec.structBodySnippet += headerGlTypeSpec.structBodySnippet;
-        } else if (!headerGlTypeSpec.valueTypeName.empty()) {
-            typeSpec.structBodySnippet += headerGlTypeSpec.valueTypeName + " header;\n";
-        } else {
-            throw GLSpecificationError("No struct body snippet or value type name for the header");
-        }
-
-        if (headerGlTypeSpec.std140Size != sizeof(HeaderT)) {
-            throw GLSpecificationError(
-                "Buffer headers not trivially convertible between host and GLSL types");
-        }
-
-        typeSpec.memberTypeDependencies.push_back(&headerGlTypeSpec);
-    }
-
-    if constexpr (SharedBufferT::HAS_FAM_ELEMENTS) {
-        auto &elementConv = getTypeConversion(TYPE_INFO<ElementT>);
-        auto &elementGlTypeSpec = elementConv.glTypeSpec;
-
-        if constexpr (SharedBufferT::HAS_HEADER) {
-            typeSpec.flexibleMemberSpec.emplace(GLTypeSpec::FlexibleMemberSpec{
-                .elementGlTypeSpec = elementGlTypeSpec,
-                .memberName = "elements",
-                .maxNumElements = std::numeric_limits<std::uint32_t>::max(),
-            });
-        } else {
-            typeSpec.flexibleMemberSpec.emplace(GLTypeSpec::FlexibleMemberSpec{
-                .elementGlTypeSpec = elementGlTypeSpec,
-                .memberName = "",
-                .maxNumElements = std::numeric_limits<std::uint32_t>::max(),
-            });
-        }
-
-        if (typeSpec.layout.std140Alignment < elementGlTypeSpec.layout.std140Alignment) {
-            typeSpec.layout.std140Alignment = elementGlTypeSpec.layout.std140Alignment;
-        }
-        if (typeSpec.layout.std140Size % elementGlTypeSpec.layout.std140Alignment != 0) {
-            typeSpec.layout.std140Size =
-                (typeSpec.layout.std140Size / elementGlTypeSpec.layout.std140Alignment + 1) *
-                elementGlTypeSpec.layout.std140Alignment;
-        }
-
-        if (typeSpec.layout.std140Size !=
-            BufferLayoutInfo::getFirstElementOffset(TYPE_INFO<HeaderT>, TYPE_INFO<ElementT>)) {
-            throw GLSpecificationError(
-                "Buffer elements do not start at the same offset between host and GLSL types");
-        }
-        if (elementGlTypeSpec.layout.std140Size != sizeof(ElementT)) {
-            throw GLSpecificationError(
-                "Buffer elements not trivially convertible between host and GLSL types");
-        }
-
-        typeSpec.memberTypeDependencies.push_back(&elementGlTypeSpec);
-    }
-    const GLTypeSpec &registeredTypeSpec = specifyGlType(std::move(typeSpec));
-
-    registerTypeConversion(
-        TYPE_INFO<SharedBufferT>,
-        GLConversionSpec{.glTypeSpec = registeredTypeSpec,
-                         .setUniform = nullptr,
-                         .setOpaqueBinding = nullptr,
-                         .setUBOBinding = nullptr,
-                         .setSSBOBinding = [](int bindingIndex, const Variant &hostValue) {
-                             setRawBufferBinding(*hostValue.get<SharedBufferT>().getRawBuffer(),
-                                                 bindingIndex);
-                         }});
-}
 
 } // namespace Vitrae
