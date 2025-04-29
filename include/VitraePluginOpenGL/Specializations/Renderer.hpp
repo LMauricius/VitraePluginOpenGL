@@ -71,10 +71,10 @@ struct GLConversionSpec
 
     std::optional<GLScalarSpec> scalarSpec;
 
-    void (*setUniform)(GLint location, const Variant &hostValue) = nullptr;
-    void (*setOpaqueBinding)(int bindingIndex, const Variant &hostValue) = nullptr;
-    void (*setUBOBinding)(int bindingIndex, const Variant &hostValue) = nullptr;
-    void (*setSSBOBinding)(int bindingIndex, const Variant &hostValue) = nullptr;
+    std::function<void(GLint location, const Variant &hostValue)>   setUniform       = nullptr;
+    std::function<void(int bindingIndex, const Variant &hostValue)> setOpaqueBinding = nullptr;
+    std::function<void(int bindingIndex, const Variant &hostValue)> setUBOBinding    = nullptr;
+    std::function<void(int bindingIndex, const Variant &hostValue)> setSSBOBinding   = nullptr;
 };
 
 /**
@@ -101,6 +101,11 @@ class OpenGLRenderer : public Renderer
     GLFWwindow *getWindow();
 
     /**
+     * @brief Register needed GL info about a type automagically using TypeMeta
+     */
+    void registerTypeAuto(const TypeInfo &hostType);
+
+    /**
      * @brief Specify a GL type
      * @returns a reference to the permanent type specification struct
      * @note The returned struct is valid until the end of the renderer's lifetime
@@ -116,7 +121,7 @@ class OpenGLRenderer : public Renderer
      */
     const GLConversionSpec &registerTypeConversion(const TypeInfo &hostType,
                                                    GLConversionSpec &&newSpec);
-    const GLConversionSpec &getTypeConversion(const TypeInfo &hostType) const;
+    const GLConversionSpec &getTypeConversion(const TypeInfo &hostType);
 
     /**
      * @brief Automatically specified the gl type and conversion for a SharedBuffer type

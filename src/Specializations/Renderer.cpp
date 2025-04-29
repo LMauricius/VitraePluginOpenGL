@@ -1,11 +1,16 @@
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
+#include "VitraePluginOpenGL/Bits/Naming.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Snippet.hpp"
 #include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Collections/MethodCollection.hpp"
+#include "Vitrae/Dynamic/TypeMeta/BufferPtr.hpp"
+#include "Vitrae/Dynamic/TypeMeta/GLSLStruct.hpp"
+#include "Vitrae/Dynamic/TypeMeta/STD140Layout.hpp"
+#include "Vitrae/Dynamic/TypeMeta/Vector.hpp"
 #include "Vitrae/Params/Standard.hpp"
 
 #include "glad/glad.h"
@@ -193,6 +198,132 @@ GLFWwindow *OpenGLRenderer::getWindow()
     return mp_mainWindow;
 }
 
+void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
+{
+    const PolymorphicTypeMeta *p_meta = &hostType.metaDetail;
+
+    auto p_bufferptr_meta = dynamic_cast<const BufferPtrMeta *>(p_meta);
+    auto p_layout_meta = dynamic_cast<const STD140LayoutMeta *>(p_meta);
+    auto p_struct_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
+    auto p_vector_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
+
+    // For buffer ptr types
+    if (p_bufferptr_meta) {
+        // Register type
+
+        GLTypeSpec typeSpec = GLTypeSpec{
+            .valueTypeName = "",
+            .opaqueTypeName = "",
+            .structBodySnippet = "",
+            .layout =
+                GLLayoutSpec{
+                    .std140Size = 0,
+                    .std140Alignment = 0,
+                    .indexSize = 0,
+                },
+        };
+
+        if (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void>) {
+            auto &headerConv = getTypeConversion(p_bufferptr_meta->headerTypeInfo);
+            auto &headerGlTypeSpec = headerConv.glTypeSpec;
+
+            if (!headerGlTypeSpec.structBodySnippet.empty()) {
+                typeSpec.structBodySnippet += headerGlTypeSpec.structBodySnippet;
+            } else if (!headerGlTypeSpec.valueTypeName.empty()) {
+                typeSpec.structBodySnippet += headerGlTypeSpec.valueTypeName + " header;\n";
+            } else {
+                throw GLSpecificationError(
+                    "No struct body snippet or value type name for the header");
+            }
+
+            if (headerGlTypeSpec.layout.std140Size != p_bufferptr_meta->headerTypeInfo.size) {
+                throw GLSpecificationError(
+                    "Buffer headers not trivially convertible between host and GLSL types");
+            }
+
+            typeSpec.memberTypeDependencies.push_back(&headerGlTypeSpec);
+        }
+
+        if (p_bufferptr_meta->elementTypeInfo != TYPE_INFO<void>) {
+            auto &elementConv = getTypeConversion(p_bufferptr_meta->elementTypeInfo);
+            auto &elementGlTypeSpec = elementConv.glTypeSpec;
+
+            typeSpec.flexibleMemberSpec.emplace(GLTypeSpec::FlexibleMemberSpec{
+                .elementGlTypeSpec = elementGlTypeSpec,
+                .memberName =
+                    (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void>) ? "elements" : "",
+                .maxNumElements = std::numeric_limits<std::uint32_t>::max(),
+            });
+
+            if (typeSpec.layout.std140Alignment < elementGlTypeSpec.layout.std140Alignment) {
+                typeSpec.layout.std140Alignment = elementGlTypeSpec.layout.std140Alignment;
+            }
+            if (typeSpec.layout.std140Size % elementGlTypeSpec.layout.std140Alignment != 0) {
+                typeSpec.layout.std140Size =
+                    (typeSpec.layout.std140Size / elementGlTypeSpec.layout.std140Alignment + 1) *
+                    elementGlTypeSpec.layout.std140Alignment;
+            }
+
+            if (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void> &&
+                p_bufferptr_meta->headerTypeInfo.size !=
+                    BufferLayoutInfo::getFirstElementOffset(p_bufferptr_meta->headerTypeInfo,
+                                                            p_bufferptr_meta->elementTypeInfo)) {
+                throw GLSpecificationError(
+                    "Buffer elements do not start at the same offset between host and GLSL types");
+            }
+            if (elementGlTypeSpec.layout.std140Size != p_bufferptr_meta->elementTypeInfo.size) {
+                throw GLSpecificationError(
+                    "Buffer elements not trivially convertible between host and GLSL types");
+            }
+
+            typeSpec.memberTypeDependencies.push_back(&elementGlTypeSpec);
+        }
+
+        const GLTypeSpec &registeredTypeSpec = specifyGlType(std::move(typeSpec));
+
+        // Register conversion
+        registerTypeConversion(
+            hostType,
+            GLConversionSpec{
+                .glTypeSpec = registeredTypeSpec,
+                .setUniform = nullptr,
+                .setOpaqueBinding = nullptr,
+                .setUBOBinding = nullptr,
+                .setSSBOBinding = [p_bufferptr_meta](int bindingIndex, const Variant &hostValue) {
+                    setRawBufferBinding(*p_bufferptr_meta->getRawBuffer(hostValue), bindingIndex);
+                }});
+    }
+    // For struct types
+    else if (p_layout_meta && p_struct_meta) {
+        // Register type
+        const GLTypeSpec &registeredTypeSpec = specifyGlType({
+            .valueTypeName = convert2GLSLTypeName(hostType.getShortTypeName()),
+            .opaqueTypeName = "",
+            .structBodySnippet = String(p_struct_meta->bodySnippet),
+            .layout =
+                GLLayoutSpec{
+                    .std140Size = p_layout_meta->std140Size,
+                    .std140Alignment = p_layout_meta->std140Alignment,
+                    .indexSize = 0,
+                },
+        });
+
+        // Register conversion
+        registerTypeConversion(hostType, GLConversionSpec{
+                                             .glTypeSpec = registeredTypeSpec,
+                                             .setUniform = nullptr,
+                                             .setOpaqueBinding = nullptr,
+                                             .setUBOBinding = nullptr,
+                                             .setSSBOBinding = nullptr,
+                                         });
+    }
+    // Problematic types
+    else {
+        throw GLSpecificationError("Conversion to GPU not supported for " +
+                                   String(hostType.getShortTypeName()));
+    }
+}
+
 const GLTypeSpec &OpenGLRenderer::specifyGlType(GLTypeSpec &&newSpec)
 {
     m_glTypes.emplace_back(std::move(newSpec));
@@ -207,9 +338,15 @@ const GLConversionSpec &OpenGLRenderer::registerTypeConversion(const TypeInfo &h
     return registeredSpec;
 }
 
-const GLConversionSpec &OpenGLRenderer::getTypeConversion(const TypeInfo &type) const
+const GLConversionSpec &OpenGLRenderer::getTypeConversion(const TypeInfo &type)
 {
-    return *m_glConversionsByHostType.at(std::type_index(*type.p_id));
+    if (auto it = m_glConversionsByHostType.find(std::type_index(*type.p_id));
+        it != m_glConversionsByHostType.end()) {
+        return *(*it).second;
+    } else {
+        registerTypeAuto(type);
+        return *m_glConversionsByHostType.at(std::type_index(*type.p_id));
+    }
 }
 
 void OpenGLRenderer::specifyVertexBuffer(const ParamSpec &newElSpec)
