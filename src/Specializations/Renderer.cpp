@@ -8,6 +8,7 @@
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Collections/MethodCollection.hpp"
 #include "Vitrae/Dynamic/TypeMeta/BufferPtr.hpp"
+#include "Vitrae/Dynamic/TypeMeta/Dependent.hpp"
 #include "Vitrae/Dynamic/TypeMeta/GLSLStruct.hpp"
 #include "Vitrae/Dynamic/TypeMeta/STD140Layout.hpp"
 #include "Vitrae/Dynamic/TypeMeta/Vector.hpp"
@@ -206,22 +207,31 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
     auto p_layout_meta = dynamic_cast<const STD140LayoutMeta *>(p_meta);
     auto p_struct_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
     auto p_vector_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
+    auto p_dependent_meta = dynamic_cast<const DependentMeta *>(p_meta);
+
+    GLTypeSpec typeSpec = GLTypeSpec{
+        .valueTypeName = "",
+        .opaqueTypeName = "",
+        .structBodySnippet = "",
+        .layout =
+            GLLayoutSpec{
+                .std140Size = 0,
+                .std140Alignment = 0,
+                .indexSize = 0,
+            },
+    };
+
+    // Add dependencies
+    if (p_dependent_meta) {
+        for (auto r_depInfo : p_dependent_meta->dependencyTypes) {
+            typeSpec.memberTypeDependencies.push_back(
+                &getTypeConversion(r_depInfo.get()).glTypeSpec);
+        }
+    }
 
     // For buffer ptr types
     if (p_bufferptr_meta) {
         // Register type
-
-        GLTypeSpec typeSpec = GLTypeSpec{
-            .valueTypeName = "",
-            .opaqueTypeName = "",
-            .structBodySnippet = "",
-            .layout =
-                GLLayoutSpec{
-                    .std140Size = 0,
-                    .std140Alignment = 0,
-                    .indexSize = 0,
-                },
-        };
 
         if (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void>) {
             auto &headerConv = getTypeConversion(p_bufferptr_meta->headerTypeInfo);
@@ -268,8 +278,8 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
                 p_bufferptr_meta->headerTypeInfo.size !=
                     BufferLayoutInfo::getFirstElementOffset(p_bufferptr_meta->headerTypeInfo,
                                                             p_bufferptr_meta->elementTypeInfo)) {
-                throw GLSpecificationError(
-                    "Buffer elements do not start at the same offset between host and GLSL types");
+                throw GLSpecificationError("Buffer elements do not start at the same offset "
+                                           "between host and GLSL types");
             }
             if (elementGlTypeSpec.layout.std140Size != p_bufferptr_meta->elementTypeInfo.size) {
                 throw GLSpecificationError(
@@ -296,17 +306,16 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
     // For struct types
     else if (p_layout_meta && p_struct_meta) {
         // Register type
-        const GLTypeSpec &registeredTypeSpec = specifyGlType({
-            .valueTypeName = convert2GLSLTypeName(hostType.getShortTypeName()),
-            .opaqueTypeName = "",
-            .structBodySnippet = String(p_struct_meta->bodySnippet),
-            .layout =
-                GLLayoutSpec{
-                    .std140Size = p_layout_meta->std140Size,
-                    .std140Alignment = p_layout_meta->std140Alignment,
-                    .indexSize = 0,
-                },
-        });
+
+        typeSpec.valueTypeName = convert2GLSLTypeName(hostType.getShortTypeName());
+        typeSpec.structBodySnippet = String(p_struct_meta->bodySnippet);
+        typeSpec.layout = {
+            .std140Size = p_layout_meta->std140Size,
+            .std140Alignment = p_layout_meta->std140Alignment,
+            .indexSize = 0,
+        };
+
+        const GLTypeSpec &registeredTypeSpec = specifyGlType(std::move(typeSpec));
 
         // Register conversion
         registerTypeConversion(hostType, GLConversionSpec{
