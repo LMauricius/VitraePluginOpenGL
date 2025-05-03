@@ -88,7 +88,7 @@ void OpenGLComposeIndexRender::extractSubTasks(std::set<const Task *> &taskSet,
 
 void OpenGLComposeIndexRender::run(RenderComposeContext ctx) const
 {
-    MMETER_SCOPE_PROFILER("OpenGLComposeDataRender::run");
+    MMETER_SCOPE_PROFILER(m_friendlyName.c_str());
 
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(m_params.root.getComponent<Renderer>());
     CompiledGLSLShaderCacher &shaderCacher = m_params.root.getComponent<CompiledGLSLShaderCacher>();

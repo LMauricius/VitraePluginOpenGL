@@ -136,7 +136,7 @@ void OpenGLComposeSceneRender::extractSubTasks(std::set<const Task *> &taskSet,
 
 void OpenGLComposeSceneRender::run(RenderComposeContext args) const
 {
-    MMETER_SCOPE_PROFILER("OpenGLComposeSceneRender::run");
+    MMETER_SCOPE_PROFILER(m_friendlyName.c_str());
 
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(m_root.getComponent<Renderer>());
     CompiledGLSLShaderCacher &shaderCacher = m_root.getComponent<CompiledGLSLShaderCacher>();
