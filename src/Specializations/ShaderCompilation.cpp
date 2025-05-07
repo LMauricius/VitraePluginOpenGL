@@ -203,6 +203,34 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
         }
     };
 
+    // Check usages of params
+
+    using UsageFlags = std::uint8_t;
+    const UsageFlags Usage_R = 1 << 0;
+    const UsageFlags Usage_W = 1 << 1;
+    const UsageFlags Usage_RW = Usage_R | Usage_W;
+
+    std::unordered_map<StringId, UsageFlags> name2usages;
+    for (auto p_helper : helperOrder) {
+        for (auto p_task : p_helper->pipeline.items) {
+            for (auto nameId :
+                 p_task->getInputSpecs(p_helper->p_compSpec->aliases).getSpecNameIds()) {
+                name2usages[p_helper->pipeline.usedSelection.choiceFor(nameId)] |= Usage_R;
+            }
+            for (auto nameId :
+                 p_task->getConsumingSpecs(p_helper->p_compSpec->aliases).getSpecNameIds()) {
+                name2usages[p_helper->pipeline.usedSelection.choiceFor(nameId)] |= Usage_R;
+            }
+            for (auto nameId : p_task->getOutputSpecs().getSpecNameIds()) {
+                name2usages[p_helper->pipeline.usedSelection.choiceFor(nameId)] |= Usage_W;
+            }
+            for (auto nameId :
+                 p_task->getFilterSpecs(p_helper->p_compSpec->aliases).getSpecNameIds()) {
+                name2usages[p_helper->pipeline.usedSelection.choiceFor(nameId)] |= Usage_RW;
+            }
+        }
+    }
+
     // prepare previous stage inputs
     StableMap<StringId, LocationSpec> prevStageOutputs;
     String prevStageOutVarPrefix;
@@ -473,7 +501,7 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
 
             std::stringstream ss;
             ParamAliases stageAliases({{&p_helper->p_compSpec->aliases}},
-                                         StableMap<StringId, String>(std::move(tobeStageAliases)));
+                                      StableMap<StringId, String>(std::move(tobeStageAliases)));
             ShaderTask::BuildContext context{
                 .output = ss,
                 .root = root,
@@ -549,8 +577,16 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
             // SSBOs
             for (auto &spec : stageSSBOList.getSpecList()) {
                 const GLTypeSpec &glTypeSpec = rend.getTypeConversion(spec.typeInfo).glTypeSpec;
+                UsageFlags usage = name2usages.at(spec.name);
 
                 ss << "layout(std430, binding=" << getBinding(spec.name) << ") ";
+                if ((usage & Usage_W) == 0) {
+                    ss << "readonly ";
+                }
+                if ((usage & Usage_R) == 0) {
+                    ss << "writeonly ";
+                }
+
                 ss << "buffer " << ssboBlockPrefix << spec.name << " {\n";
                 if (glTypeSpec.valueTypeName.empty()) {
                     if (glTypeSpec.structBodySnippet.empty() &&
@@ -983,7 +1019,8 @@ void CompiledGLSLShader::setupProperties(OpenGLRenderer &rend, VariantScope &env
     }
 }
 
-void CompiledGLSLShader::setupNonMaterialProperties(OpenGLRenderer &rend, VariantScope &envProperties,
+void CompiledGLSLShader::setupNonMaterialProperties(OpenGLRenderer &rend,
+                                                    VariantScope &envProperties,
                                                     const Material &firstMaterial) const
 {
     MMETER_SCOPE_PROFILER("CompiledGLSLShader::setupNonMaterialProperties(OpenGLRenderer &rend, "
