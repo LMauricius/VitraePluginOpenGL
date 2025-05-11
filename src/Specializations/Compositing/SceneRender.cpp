@@ -71,7 +71,8 @@ OpenGLComposeSceneRender::OpenGLComposeSceneRender(const SetupParams &params)
 
     m_params.ordering.inputSpecs.insert_back(StandardParam::scene);
     m_params.ordering.inputSpecs.insert_back(StandardParam::LoDParams);
-    m_params.ordering.inputSpecs.insert_back(StandardParam::mat_display);
+    m_params.ordering.inputSpecs.insert_back(StandardParam::mat_view);
+    m_params.ordering.inputSpecs.insert_back(StandardParam::mat_proj);
     m_params.ordering.filterSpecs.insert_back(StandardParam::fs_target);
 }
 
@@ -166,7 +167,11 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
     Scene &scene = *args.properties.get(StandardParam::scene.name).get<dynasma::FirmPtr<Scene>>();
     const LoDSelectionParams &lodParams =
         args.properties.get(StandardParam::LoDParams.name).get<LoDSelectionParams>();
-    glm::mat4 mat_display = args.properties.get(StandardParam::mat_display.name).get<glm::mat4>();
+    glm::mat4 mat_view =
+        args.properties.get(args.aliases.choiceFor(StandardParam::mat_view.name)).get<glm::mat4>();
+    glm::mat4 mat_proj =
+        args.properties.get(args.aliases.choiceFor(StandardParam::mat_proj.name)).get<glm::mat4>();
+    glm::mat4 mat_display = mat_proj * mat_view;
     dynasma::FirmPtr<FrameStore> p_frame =
         args.properties.get(StandardParam::fs_target.name).get<dynasma::FirmPtr<FrameStore>>();
 
