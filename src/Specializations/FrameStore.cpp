@@ -1,5 +1,6 @@
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
+#include "Vitrae/Data/Overloaded.hpp"
 #include "Vitrae/Params/ParamList.hpp"
 #include "Vitrae/Params/Standard.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
@@ -12,6 +13,7 @@
 namespace Vitrae
 {
 OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
+    : m_outputTextureSpecs(params.outputTextureSpecs)
 {
     static const GLenum drawBufferConstantsOrdered[] = {
         GL_COLOR_ATTACHMENT0,  GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2,  GL_COLOR_ATTACHMENT3,
@@ -25,42 +27,45 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
     glGenFramebuffers(1, &glFramebufferId);
     glBindFramebuffer(GL_FRAMEBUFFER, glFramebufferId);
 
-    int width, height;
+    int width = 0, height = 0;
     std::vector<ParamSpec> renderComponents;
     std::size_t colorAttachmentUnusedIndex = 0;
 
-    if (params.p_depthTexture.has_value()) {
-        auto p_texture =
-            dynasma::dynamic_pointer_cast<OpenGLTexture>(params.p_depthTexture.value());
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                               p_texture->glTextureId, 0);
-        width = p_texture->getSize().x;
-        height = p_texture->getSize().y;
-    }
+    for (const auto &texSpec : params.outputTextureSpecs) {
+        if (!texSpec.p_texture.has_value()) {
+            continue;
+        }
 
-    if (params.p_colorTexture.has_value()) {
-        auto p_texture =
-            dynasma::dynamic_pointer_cast<OpenGLTexture>(params.p_colorTexture.value());
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachmentUnusedIndex,
-                               GL_TEXTURE_2D, p_texture->glTextureId, 0);
-        width = p_texture->getSize().x;
-        height = p_texture->getSize().y;
+        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
 
-        renderComponents.emplace_back(StandardParam::fragment_color);
+        if (width == 0 && height == 0) {
+            width = p_texture->getSize().x;
+            height = p_texture->getSize().y;
+        } else if (width != p_texture->getSize().x || height != p_texture->getSize().y) {
+            throw std::runtime_error("All textures must be the same size");
+        }
 
-        colorAttachmentUnusedIndex++;
-    }
+        GLenum attachment;
+        std::visit(Overloaded{
+                       [&](const FixedRenderComponent &comp) {
+                           switch (comp) {
+                           case FixedRenderComponent::Depth:
+                               attachment = GL_DEPTH_ATTACHMENT;
+                               break;
+                           }
+                       },
+                       [&](const ParamSpec &spec) {
+                           attachment = GL_COLOR_ATTACHMENT0 + colorAttachmentUnusedIndex;
 
-    for (const auto &spec : params.outputTextureSpecs) {
-        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(spec.p_texture);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachmentUnusedIndex,
-                               GL_TEXTURE_2D, p_texture->glTextureId, 0);
-        width = p_texture->getSize().x;
-        height = p_texture->getSize().y;
+                           renderComponents.emplace_back(spec);
 
-        renderComponents.emplace_back(spec.fragmentSpec);
+                           colorAttachmentUnusedIndex++;
+                       },
+                   },
+                   texSpec.shaderComponent);
 
-        colorAttachmentUnusedIndex++;
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, p_texture->glTextureId,
+                               0);
     }
 
     glDrawBuffers(colorAttachmentUnusedIndex, drawBufferConstantsOrdered);
@@ -84,6 +89,18 @@ OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
     // reset window
     glfwSetWindowSize(window, params.width, params.height);
     glfwSetWindowTitle(window, params.title.c_str());
+
+    // 'empty' textures just for clearing and stuff
+    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
+        .p_texture = std::nullopt,
+        .shaderComponent = StandardParam::fragment_color,
+        .clearColor = params.clearColor,
+    });
+    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
+        .p_texture = std::nullopt,
+        .shaderComponent = FixedRenderComponent::Depth,
+        .clearColor = params.clearDepth,
+    });
 
     // setup members
     mp_renderComponents = dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
@@ -143,6 +160,11 @@ glm::vec2 OpenGLFrameStore::getSize() const
 dynasma::FirmPtr<const ParamList> OpenGLFrameStore::getRenderComponents() const
 {
     return mp_renderComponents;
+}
+
+std::span<const FrameStore::OutputTextureSpec> OpenGLFrameStore::getOutputTextureSpecs() const
+{
+    return m_outputTextureSpecs;
 }
 
 void OpenGLFrameStore::sync(bool vsync)

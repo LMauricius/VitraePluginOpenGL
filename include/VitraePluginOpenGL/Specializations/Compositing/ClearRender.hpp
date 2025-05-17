@@ -31,7 +31,6 @@ class OpenGLComposeClearRender : public ComposeClearRender
 
   protected:
     ComponentRoot &m_root;
-    glm::vec4 m_color;
     ParamList m_outputSpecs;
     String m_friendlyName;
 };

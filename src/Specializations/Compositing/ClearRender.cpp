@@ -1,14 +1,15 @@
 #include "VitraePluginOpenGL/Specializations/Compositing/ClearRender.hpp"
 #include "Vitrae/Assets/FrameStore.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
+#include "Vitrae/Data/Overloaded.hpp"
 #include "Vitrae/Dynamic/TypeInfo.hpp"
 #include "Vitrae/Params/Standard.hpp"
-#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
+#include "Vitrae/TypeConversion/StringCvt.hpp"
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
 #include "VitraePluginOpenGL/Specializations/Mesh.hpp"
+#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 #include "VitraePluginOpenGL/Specializations/ShaderCompilation.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
-#include "Vitrae/TypeConversion/StringCvt.hpp"
 
 #include "MMeter.h"
 
@@ -21,11 +22,7 @@ const ParamList FILTER_SPECS = {StandardParam::fs_target};
 }
 
 OpenGLComposeClearRender::OpenGLComposeClearRender(const SetupParams &params)
-    : m_root(params.root), m_color(params.backgroundColor),
-      m_friendlyName(String("Clear to\n") + toHexString(255 * params.backgroundColor.r, 2) +
-                     toHexString(255 * params.backgroundColor.g, 2) +
-                     toHexString(255 * params.backgroundColor.b, 2) + "*" +
-                     std::to_string(params.backgroundColor.a))
+    : m_root(params.root), m_friendlyName(String("Clear target\n"))
 {
     for (auto &tokenName : params.outputTokenNames) {
         m_outputSpecs.insert_back({.name = tokenName, .typeInfo = TYPE_INFO<void>});
@@ -78,9 +75,6 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
 {
     MMETER_SCOPE_PROFILER(m_friendlyName.c_str());
 
-    OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(m_root.getComponent<Renderer>());
-    CompiledGLSLShaderCacher &shaderCacher = m_root.getComponent<CompiledGLSLShaderCacher>();
-
     dynasma::FirmPtr<FrameStore> p_frame =
         args.properties.get(StandardParam::fs_target.name).get<dynasma::FirmPtr<FrameStore>>();
     OpenGLFrameStore &frame = static_cast<OpenGLFrameStore &>(*p_frame);
@@ -88,9 +82,99 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
     frame.enterRender({0.0f, 0.0f}, {1.0f, 1.0f});
 
     glDepthMask(GL_TRUE);
+    GLbitfield clearMask = 0;
 
-    glClearColor(m_color.r, m_color.g, m_color.b, m_color.a);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    std::size_t attachmentIndex = 0;
+    for (auto &texSpec : frame.getOutputTextureSpecs()) {
+
+        // Either set the clear color for standard buffers, or clear buffer
+        // manually
+        std::visit(Overloaded{
+                       [&](const FixedRenderComponent &comp) {
+                           switch (comp) {
+                           case FixedRenderComponent::Depth:
+                               // Check the color type
+                               std::visit(Overloaded{
+                                              [&](const FixedClearColor &colInd) {
+                                                  switch (colInd) {
+                                                  case FixedClearColor::Garbage:
+                                                      // do nothing
+                                                      break;
+                                                  case FixedClearColor::Default:
+                                                      // default depth 1.0
+                                                      glClearDepthf(1.0f);
+                                                      clearMask |= GL_DEPTH_BUFFER_BIT;
+                                                      break;
+                                                  }
+                                              },
+                                              [&](const glm::vec4 &color) {
+                                                  // first component is depth
+                                                  glClearDepthf(color[0]);
+                                                  clearMask |= GL_DEPTH_BUFFER_BIT;
+                                              },
+                                          },
+                                          texSpec.clearColor);
+
+                               break;
+                           }
+                       },
+                       [&](const ParamSpec &spec) {
+                           if (attachmentIndex == 0) {
+                               // default color output
+                               // Check the color type
+                               std::visit(Overloaded{
+                                              [&](const FixedClearColor &colInd) {
+                                                  switch (colInd) {
+                                                  case FixedClearColor::Garbage:
+                                                      // do nothing
+                                                      break;
+                                                  case FixedClearColor::Default:
+                                                      // default is black
+                                                      glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                                                      clearMask |= GL_COLOR_BUFFER_BIT;
+                                                      break;
+                                                  }
+                                              },
+                                              [&](const glm::vec4 &color) {
+                                                  // use the vector
+                                                  glClearColor(color[0], color[1], color[2], color[3]);
+                                                  clearMask |= GL_COLOR_BUFFER_BIT;
+                                              },
+                                          },
+                                          texSpec.clearColor);
+                               clearMask |= GL_COLOR_BUFFER_BIT;
+                           } else {
+                               // other color outputs
+                               // Check the color type
+                               std::visit(Overloaded{
+                                              [&](const FixedClearColor &colInd) {
+                                                  switch (colInd) {
+                                                  case FixedClearColor::Garbage:
+                                                      // do nothing
+                                                      break;
+                                                  case FixedClearColor::Default:
+                                                      // default is black
+                                                      glClearBufferfv(GL_COLOR, attachmentIndex,
+                                                                      (const GLfloat[]){0.0f, 0.0f, 0.0f, 0.0f});
+                                                      break;
+                                                  }
+                                              },
+                                              [&](const glm::vec4 &color) {
+                                                  // use the vector
+                                                  glClearBufferfv(GL_COLOR, attachmentIndex,
+                                                                  &color[0]);
+                                              },
+                                          },
+                                          texSpec.clearColor);
+                           }
+
+                           attachmentIndex++;
+                       },
+                   },
+                   texSpec.shaderComponent);
+    }
+
+    glClear(clearMask);
 
     frame.exitRender();
 

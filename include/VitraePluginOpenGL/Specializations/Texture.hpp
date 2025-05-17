@@ -29,8 +29,7 @@ class OpenGLTexture : public Texture
     GLuint glTextureId;
 
   protected:
-    OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterType minFilter,
-                  FilterType magFilter, bool useMipMaps, glm::vec4 borderColor);
+    OpenGLTexture(const TextureFilteringParams& filtering);
 
     GLint mGLInternalFormat;
     GLint mGLChannelFormat;

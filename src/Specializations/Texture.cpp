@@ -9,11 +9,9 @@
 
 namespace Vitrae
 {
-OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterType minFilter,
-                             FilterType magFilter, bool useMipMaps, glm::vec4 borderColor)
-    : m_sentToGPU(false)
+OpenGLTexture::OpenGLTexture(const TextureFilteringParams &filtering) : m_sentToGPU(false)
 {
-    switch (horWrap) {
+    switch (filtering.horWrap) {
     case WrappingType::BORDER_COLOR:
         mGLWrapS = GL_CLAMP_TO_BORDER;
         break;
@@ -27,7 +25,7 @@ OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterT
         mGLWrapS = GL_MIRRORED_REPEAT;
         break;
     }
-    switch (verWrap) {
+    switch (filtering.verWrap) {
     case WrappingType::BORDER_COLOR:
         mGLWrapT = GL_CLAMP_TO_BORDER;
         break;
@@ -41,7 +39,7 @@ OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterT
         mGLWrapT = GL_MIRRORED_REPEAT;
         break;
     }
-    switch (magFilter) {
+    switch (filtering.magFilter) {
     case FilterType::LINEAR:
         mGLMagFilter = GL_LINEAR;
         break;
@@ -49,8 +47,8 @@ OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterT
         mGLMagFilter = GL_NEAREST;
         break;
     }
-    if (useMipMaps) {
-        switch (minFilter) {
+    if (filtering.useMipMaps) {
+        switch (filtering.minFilter) {
         case FilterType::LINEAR:
             mGLMinFilter = GL_LINEAR_MIPMAP_LINEAR;
             break;
@@ -59,7 +57,7 @@ OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterT
             break;
         }
     } else {
-        switch (minFilter) {
+        switch (filtering.minFilter) {
         case FilterType::LINEAR:
             mGLMinFilter = GL_LINEAR;
             break;
@@ -68,13 +66,11 @@ OpenGLTexture::OpenGLTexture(WrappingType horWrap, WrappingType verWrap, FilterT
             break;
         }
     }
-    mUseMipMaps = useMipMaps;
-    mBorderColor = borderColor;
+    mUseMipMaps = filtering.useMipMaps;
+    mBorderColor = filtering.borderColor;
 }
 
-OpenGLTexture::OpenGLTexture(const FileLoadParams &params)
-    : OpenGLTexture(params.horWrap, params.verWrap, params.minFilter, params.magFilter,
-                    params.useMipMaps, {0.0f, 0.0f, 0.0f, 0.0f})
+OpenGLTexture::OpenGLTexture(const FileLoadParams &params) : OpenGLTexture(params.filtering)
 {
     int stbChannelFormat;
     unsigned char *data =
@@ -149,119 +145,117 @@ OpenGLTexture::OpenGLTexture(const FileLoadParams &params)
     }
 }
 
-OpenGLTexture::OpenGLTexture(const EmptyParams &params)
-    : OpenGLTexture(params.horWrap, params.verWrap, params.minFilter, params.magFilter,
-                    params.useMipMaps, params.borderColor)
+OpenGLTexture::OpenGLTexture(const EmptyParams &params) : OpenGLTexture(params.filtering)
 {
     m_stats.reset();
 
     mUseSwizzle = false;
-    switch (params.channelType) {
-    case ChannelType::GRAYSCALE:
+    switch (params.format) {
+    case BufferFormat::GRAYSCALE_STANDARD:
         mGLInternalFormat = GL_RED;
         mGLChannelFormat = GL_RED;
         mSwizzle = {GL_RED, GL_RED, GL_RED, GL_ONE};
         mUseSwizzle = true;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::GRAYSCALE_ALPHA:
+    case BufferFormat::GRAYSCALE_ALPHA_STANDARD:
         mGLInternalFormat = GL_RG;
         mGLChannelFormat = GL_RG;
         mSwizzle = {GL_RED, GL_RED, GL_RED, GL_GREEN};
         mUseSwizzle = true;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::RGB:
+    case BufferFormat::RGB_STANDARD:
         mGLInternalFormat = GL_RGB;
         mGLChannelFormat = GL_RGB;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::RGBA:
+    case BufferFormat::RGBA_STANDARD:
         mGLInternalFormat = GL_RGBA;
         mGLChannelFormat = GL_RGBA;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::DEPTH:
+    case BufferFormat::DEPTH_STANDARD:
         mGLInternalFormat = GL_DEPTH_COMPONENT;
         mGLChannelFormat = GL_DEPTH_COMPONENT;
         mGLChannelType = GL_FLOAT;
         break;
-    case ChannelType::SCALAR_SNORM8:
+    case BufferFormat::SCALAR_SNORM8:
         mGLInternalFormat = GL_R8_SNORM;
         mGLChannelFormat = GL_RED;
         mGLChannelType = GL_BYTE;
         break;
-    case ChannelType::VEC2_SNORM8:
+    case BufferFormat::VEC2_SNORM8:
         mGLInternalFormat = GL_RG8_SNORM;
         mGLChannelFormat = GL_RG;
         mGLChannelType = GL_BYTE;
         break;
-    case ChannelType::VEC3_SNORM8:
+    case BufferFormat::VEC3_SNORM8:
         mGLInternalFormat = GL_RGB8_SNORM;
         mGLChannelFormat = GL_RGB;
         mGLChannelType = GL_BYTE;
         break;
-    case ChannelType::VEC4_SNORM8:
+    case BufferFormat::VEC4_SNORM8:
         mGLInternalFormat = GL_RGBA8_SNORM;
         mGLChannelFormat = GL_RGBA;
         mGLChannelType = GL_BYTE;
         break;
-    case ChannelType::SCALAR_UNORM8:
+    case BufferFormat::SCALAR_UNORM8:
         mGLInternalFormat = GL_R8;
         mGLChannelFormat = GL_RED;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::VEC2_UNORM8:
+    case BufferFormat::VEC2_UNORM8:
         mGLInternalFormat = GL_RG8;
         mGLChannelFormat = GL_RG;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::VEC3_UNORM8:
+    case BufferFormat::VEC3_UNORM8:
         mGLInternalFormat = GL_RGB8;
         mGLChannelFormat = GL_RGB;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::VEC4_UNORM8:
+    case BufferFormat::VEC4_UNORM8:
         mGLInternalFormat = GL_RGBA8;
         mGLChannelFormat = GL_RGBA;
         mGLChannelType = GL_UNSIGNED_BYTE;
         break;
-    case ChannelType::SCALAR_FLOAT16:
+    case BufferFormat::SCALAR_FLOAT16:
         mGLInternalFormat = GL_R16F;
         mGLChannelFormat = GL_RED;
         mGLChannelType = GL_HALF_FLOAT;
         break;
-    case ChannelType::VEC2_FLOAT16:
+    case BufferFormat::VEC2_FLOAT16:
         mGLInternalFormat = GL_RG16F;
         mGLChannelFormat = GL_RG;
         mGLChannelType = GL_HALF_FLOAT;
         break;
-    case ChannelType::VEC3_FLOAT16:
+    case BufferFormat::VEC3_FLOAT16:
         mGLInternalFormat = GL_RGB16F;
         mGLChannelFormat = GL_RGB;
         mGLChannelType = GL_HALF_FLOAT;
         break;
-    case ChannelType::VEC4_FLOAT16:
+    case BufferFormat::VEC4_FLOAT16:
         mGLInternalFormat = GL_RGBA16F;
         mGLChannelFormat = GL_RGBA;
         mGLChannelType = GL_HALF_FLOAT;
         break;
-    case ChannelType::SCALAR_FLOAT32:
+    case BufferFormat::SCALAR_FLOAT32:
         mGLInternalFormat = GL_R32F;
         mGLChannelFormat = GL_RED;
         mGLChannelType = GL_FLOAT;
         break;
-    case ChannelType::VEC2_FLOAT32:
+    case BufferFormat::VEC2_FLOAT32:
         mGLInternalFormat = GL_RG32F;
         mGLChannelFormat = GL_RG;
         mGLChannelType = GL_FLOAT;
         break;
-    case ChannelType::VEC3_FLOAT32:
+    case BufferFormat::VEC3_FLOAT32:
         mGLInternalFormat = GL_RGB32F;
         mGLChannelFormat = GL_RGB;
         mGLChannelType = GL_FLOAT;
         break;
-    case ChannelType::VEC4_FLOAT32:
+    case BufferFormat::VEC4_FLOAT32:
         mGLInternalFormat = GL_RGBA32F;
         mGLChannelFormat = GL_RGBA;
         mGLChannelType = GL_FLOAT;
@@ -275,8 +269,14 @@ OpenGLTexture::OpenGLTexture(const EmptyParams &params)
 }
 
 OpenGLTexture::OpenGLTexture(const PureColorParams &params)
-    : OpenGLTexture(WrappingType::REPEAT, WrappingType::REPEAT, FilterType::NEAREST,
-                    FilterType::NEAREST, false, params.color)
+    : OpenGLTexture(TextureFilteringParams{
+          WrappingType::REPEAT,
+          WrappingType::REPEAT,
+          FilterType::NEAREST,
+          FilterType::NEAREST,
+          false,
+          params.color,
+      })
 {
     mUseSwizzle = false;
     mGLInternalFormat = GL_RGBA;
