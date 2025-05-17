@@ -142,7 +142,6 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
                                               },
                                           },
                                           texSpec.clearColor);
-                               clearMask |= GL_COLOR_BUFFER_BIT;
                            } else {
                                // other color outputs
                                // Check the color type
