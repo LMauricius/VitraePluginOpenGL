@@ -10,17 +10,23 @@
 
 #include "dynasma/standalone.hpp"
 
+namespace
+{
+
+static const GLenum drawBufferConstantsOrdered[] = {
+    GL_COLOR_ATTACHMENT0,  GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2,  GL_COLOR_ATTACHMENT3,
+    GL_COLOR_ATTACHMENT4,  GL_COLOR_ATTACHMENT5,  GL_COLOR_ATTACHMENT6,  GL_COLOR_ATTACHMENT7,
+    GL_COLOR_ATTACHMENT8,  GL_COLOR_ATTACHMENT9,  GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
+    GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
+};
+
+}
+
 namespace Vitrae
 {
 OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
-    : m_outputTextureSpecs(params.outputTextureSpecs)
+    : m_outputTextureSpecs(params.outputTextureSpecs), m_colorAttachmentUnusedIndex(0)
 {
-    static const GLenum drawBufferConstantsOrdered[] = {
-        GL_COLOR_ATTACHMENT0,  GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2,  GL_COLOR_ATTACHMENT3,
-        GL_COLOR_ATTACHMENT4,  GL_COLOR_ATTACHMENT5,  GL_COLOR_ATTACHMENT6,  GL_COLOR_ATTACHMENT7,
-        GL_COLOR_ATTACHMENT8,  GL_COLOR_ATTACHMENT9,  GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
-        GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
-    };
 
     GLuint glFramebufferId;
 
@@ -28,8 +34,6 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
     glBindFramebuffer(GL_FRAMEBUFFER, glFramebufferId);
 
     int width = 0, height = 0;
-    std::vector<ParamSpec> renderComponents;
-    std::size_t colorAttachmentUnusedIndex = 0;
 
     for (const auto &texSpec : params.outputTextureSpecs) {
         if (!texSpec.p_texture.has_value()) {
@@ -55,11 +59,11 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
                            }
                        },
                        [&](const ParamSpec &spec) {
-                           attachment = GL_COLOR_ATTACHMENT0 + colorAttachmentUnusedIndex;
+                           attachment = GL_COLOR_ATTACHMENT0 + m_colorAttachmentUnusedIndex;
 
-                           renderComponents.emplace_back(spec);
+                           m_renderComponents.emplace_back(spec);
 
-                           colorAttachmentUnusedIndex++;
+                           m_colorAttachmentUnusedIndex++;
                        },
                    },
                    texSpec.shaderComponent);
@@ -68,7 +72,7 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
                                0);
     }
 
-    glDrawBuffers(colorAttachmentUnusedIndex, drawBufferConstantsOrdered);
+    glDrawBuffers(m_colorAttachmentUnusedIndex, drawBufferConstantsOrdered);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -76,11 +80,12 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
     glObjectLabel(GL_FRAMEBUFFER, glFramebufferId, glLabel.size(), glLabel.data());
 
     m_contextSwitcher = FramebufferContextSwitcher{width, height, glFramebufferId};
-    mp_renderComponents = dynasma::makeStandalone<ParamList, std::vector<Vitrae::ParamSpec> &&>(
-        std::move(renderComponents));
+    mp_renderComponents = dynasma::makeStandalone<ParamList, const std::vector<Vitrae::ParamSpec>>(
+        m_renderComponents);
 }
 
 OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
+    : m_colorAttachmentUnusedIndex(0)
 {
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(params.root.getComponent<Renderer>());
 
@@ -149,6 +154,66 @@ std::size_t OpenGLFrameStore::memory_cost() const
 void OpenGLFrameStore::resize(glm::vec2 size)
 {
     /// TODO: resize capabilities
+}
+
+void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
+{
+    m_outputTextureSpecs.push_back(texSpec);
+
+    std::visit(
+        Overloaded{
+            [&](FramebufferContextSwitcher &contextSwitcher) {
+                glBindFramebuffer(GL_FRAMEBUFFER, contextSwitcher.glFramebufferId);
+
+                if (!texSpec.p_texture.has_value()) {
+                    return;
+                }
+
+                auto p_texture =
+                    dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
+
+                if (contextSwitcher.width != p_texture->getSize().x ||
+                    contextSwitcher.height != p_texture->getSize().y) {
+                    throw std::runtime_error("All bound textures must be the same size");
+                }
+
+                GLenum attachment;
+                std::visit(Overloaded{
+                               [&](const FixedRenderComponent &comp) {
+                                   switch (comp) {
+                                   case FixedRenderComponent::Depth:
+                                       attachment = GL_DEPTH_ATTACHMENT;
+                                       break;
+                                   }
+                               },
+                               [&](const ParamSpec &spec) {
+                                   attachment = GL_COLOR_ATTACHMENT0 + m_colorAttachmentUnusedIndex;
+
+                                   m_renderComponents.emplace_back(spec);
+
+                                   m_colorAttachmentUnusedIndex++;
+                               },
+                           },
+                           texSpec.shaderComponent);
+
+                glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D,
+                                       p_texture->glTextureId, 0);
+
+                // re-setup outputs
+                mp_renderComponents =
+                    dynasma::makeStandalone<ParamList, const std::vector<Vitrae::ParamSpec>>(
+                        m_renderComponents);
+
+                // re-setup the buffer
+                glDrawBuffers(m_colorAttachmentUnusedIndex, drawBufferConstantsOrdered);
+                glReadBuffer(GL_NONE);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            },
+            [&](WindowContextSwitcher &contextSwitcher) {
+                throw std::runtime_error("Can't bind texture outputs to a window FrameStore");
+            },
+        },
+        m_contextSwitcher);
 }
 
 glm::vec2 OpenGLFrameStore::getSize() const

@@ -20,7 +20,9 @@ class OpenGLFrameStore : public FrameStore
     ~OpenGLFrameStore() override;
 
     std::size_t memory_cost() const override;
+
     void resize(glm::vec2 size) override;
+    void bindOutput(const OutputTextureSpec &spec) override;
 
     glm::vec2 getSize() const override;
     dynasma::FirmPtr<const ParamList> getRenderComponents() const override;
@@ -34,6 +36,9 @@ class OpenGLFrameStore : public FrameStore
   protected:
     dynasma::FirmPtr<const ParamList> mp_renderComponents;
     std::vector<OutputTextureSpec> m_outputTextureSpecs;
+
+    std::vector<ParamSpec> m_renderComponents;
+    std::size_t m_colorAttachmentUnusedIndex;
 
     struct FramebufferContextSwitcher
     {
