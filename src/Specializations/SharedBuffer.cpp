@@ -14,10 +14,10 @@ OpenGLRawSharedBuffer::OpenGLRawSharedBuffer(const SetupParams &params)
 
     if (params.size > 0) {
         resize(params.size);
-    }
 
-    if (m_usage & BufferUsageHint::HOST_INIT) {
-        requestBufferPtr();
+        if (m_usage & BufferUsageHint::HOST_INIT) {
+            requestBufferPtr();
+        }
     }
 }
 
