@@ -45,7 +45,7 @@ void OpenGLRawSharedBuffer::synchronize()
 
 bool OpenGLRawSharedBuffer::isSynchronized() const
 {
-    return m_bufferPtr == nullptr;
+    return m_bufferPtr == nullptr || m_dirtySpan.first == m_dirtySpan.second;
 }
 
 void OpenGLRawSharedBuffer::requestBufferPtr() const

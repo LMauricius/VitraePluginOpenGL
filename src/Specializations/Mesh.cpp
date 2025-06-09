@@ -43,6 +43,8 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
         }
     }
 
+    m_indexBuffer.getRawBuffer()->synchronize();
+
     // load vertices
     auto extractVertexData =
         [&]<class aiType, class glmType = typename aiTypeCvt<aiType>::glmType>(
@@ -65,6 +67,8 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
                     for (int i = 0; i < params.p_extMesh->mNumVertices; i++) {
                         cpuBuffer[i] = aiTypeCvt<aiType>::toGlmVal(src[i]);
                     }
+
+                    p_buffer.getRawBuffer()->synchronize();
                 }
             }
         };
@@ -137,8 +141,6 @@ void OpenGLMesh::loadToGPU(Renderer &r)
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(r);
 
     if (!m_sentToGPU) {
-        m_sentToGPU = true;
-
         // prepare OpenGL buffers
         glGenVertexArrays(1, &VAO);
 
@@ -148,6 +150,11 @@ void OpenGLMesh::loadToGPU(Renderer &r)
         for (auto [name, p_buffer] : m_vertexComponentBuffers) {
             OpenGLRawSharedBuffer &rawBuffer =
                 static_cast<OpenGLRawSharedBuffer &>(*(p_buffer.getRawBuffer()));
+
+            if (!rawBuffer.isSynchronized()) {
+                throw std::runtime_error("Mesh vertex component buffer for " +
+                                         String(m_friendlyname) + " is not synchronized");
+            }
 
             // get type info and conversion
             const TypeInfo &compType = p_buffer.getHeaderTypeInfo();
@@ -192,6 +199,10 @@ void OpenGLMesh::loadToGPU(Renderer &r)
         OpenGLRawSharedBuffer &rawIndexBuffer =
             static_cast<OpenGLRawSharedBuffer &>(*(m_indexBuffer.getRawBuffer()));
 
+        if (!rawIndexBuffer.isSynchronized()) {
+            throw std::runtime_error("Mesh index buffer for " + String(m_friendlyname) +
+                                     " is not synchronized");
+        }
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rawIndexBuffer.getGlBufferHandle());
 
         glBindVertexArray(0);
@@ -199,6 +210,8 @@ void OpenGLMesh::loadToGPU(Renderer &r)
         // debug
         String glLabel = String("mesh ") + String(m_friendlyname);
         glObjectLabel(GL_VERTEX_ARRAY, VAO, glLabel.size(), glLabel.data());
+
+        m_sentToGPU = true;
     }
 }
 
@@ -239,8 +252,10 @@ SharedBufferPtr<void, Triangle> OpenGLMesh::getIndexBuffer() const
 
 void OpenGLMesh::rasterize() const
 {
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 3 * m_indexBuffer.numElements(), GL_UNSIGNED_INT, 0);
+    if (m_sentToGPU) {
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 3 * m_indexBuffer.numElements(), GL_UNSIGNED_INT, 0);
+    }
 }
 
 } // namespace Vitrae
