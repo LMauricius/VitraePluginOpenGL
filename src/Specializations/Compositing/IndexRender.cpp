@@ -29,6 +29,9 @@ OpenGLComposeIndexRender::OpenGLComposeIndexRender(const SetupParams &params): m
     }
 
     m_inputSpecs.insert_back({.name = params.sizeParamName, .typeInfo = TYPE_INFO<std::uint32_t>});
+    m_inputSpecs.insert_back(StandardParam::fs_target);
+
+    m_friendlyName = "Render for " + params.sizeParamName;
 }
 
 std::size_t OpenGLComposeIndexRender::memory_cost() const
@@ -208,7 +211,7 @@ void OpenGLComposeIndexRender::run(RenderComposeContext ctx) const
 
             for (std::uint32_t i = 0; i < indexSize; ++i) {
                 if (gl_index4data_UniformLocation != -1) {
-                    glUniform1i(gl_index4data_UniformLocation, i);
+                    glUniform1ui(gl_index4data_UniformLocation, i);
                 }
 
                 rasterizeShape(*p_shape, m_params.rasterizing);
