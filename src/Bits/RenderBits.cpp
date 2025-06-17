@@ -42,10 +42,10 @@ void stateSetupRasterizing(const RasterizingSetupParams &params)
         if (params.smoothTracing) {
             glEnable(GL_LINE_SMOOTH);
             glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-            glLineWidth(1.5);
+            glLineWidth(params.lineWidth + 0.5);
         } else {
             glDisable(GL_LINE_SMOOTH);
-            glLineWidth(1.0);
+            glLineWidth(params.lineWidth);
         }
 
         auto convertBlending = [](BlendingFunction blending) {
