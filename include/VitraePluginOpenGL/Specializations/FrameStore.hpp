@@ -24,7 +24,7 @@ class OpenGLFrameStore : public FrameStore
     void resize(glm::vec2 size) override;
     void bindOutput(const OutputTextureSpec &spec) override;
 
-    glm::vec2 getSize() const override;
+    glm::uvec2 getSize() const override;
     dynasma::FirmPtr<const ParamList> getRenderComponents() const override;
     std::span<const OutputTextureSpec> getOutputTextureSpecs() const override;
 
@@ -46,7 +46,7 @@ class OpenGLFrameStore : public FrameStore
         void exitContext();
         void sync(bool vsync);
         void destroyContext();
-        glm::vec2 getSize() const;
+        glm::uvec2 getSize() const;
 
         int width, height;
         GLuint glFramebufferId;
@@ -57,7 +57,7 @@ class OpenGLFrameStore : public FrameStore
         void exitContext();
         void sync(bool vsync);
         void destroyContext();
-        glm::vec2 getSize() const;
+        glm::uvec2 getSize() const;
 
         GLFWwindow *window;
 

@@ -216,7 +216,7 @@ void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
         m_contextSwitcher);
 }
 
-glm::vec2 OpenGLFrameStore::getSize() const
+glm::uvec2 OpenGLFrameStore::getSize() const
 {
     return std::visit([](auto &contextSwitcher) { return contextSwitcher.getSize(); },
                       m_contextSwitcher);
@@ -258,9 +258,9 @@ void OpenGLFrameStore::FramebufferContextSwitcher::destroyContext()
 {
     glDeleteFramebuffers(1, &glFramebufferId);
 }
-glm::vec2 OpenGLFrameStore::FramebufferContextSwitcher::getSize() const
+glm::uvec2 OpenGLFrameStore::FramebufferContextSwitcher::getSize() const
 {
-    return glm::vec2(width, height);
+    return glm::uvec2(width, height);
 }
 void OpenGLFrameStore::FramebufferContextSwitcher::enterContext(glm::vec2 topLeft,
                                                                 glm::vec2 bottomRight)
@@ -281,7 +281,7 @@ Window drawing
 */
 
 void OpenGLFrameStore::WindowContextSwitcher::destroyContext() {}
-glm::vec2 OpenGLFrameStore::WindowContextSwitcher::getSize() const
+glm::uvec2 OpenGLFrameStore::WindowContextSwitcher::getSize() const
 {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
