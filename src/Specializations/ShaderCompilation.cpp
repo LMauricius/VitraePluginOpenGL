@@ -781,27 +781,27 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
             // debug
             String filePrefix = std::string("shaderdebug/") + p_helper->p_compSpec->outVarPrefix +
                                 getPipelineId(p_helper->pipeline, p_helper->p_compSpec->aliases);
+            std::filesystem::path dotFilename = filePrefix + ".dot";
+            std::filesystem::path glslFilename = filePrefix + ".glsl";
             {
                 std::ofstream file;
-                String filename = filePrefix + ".dot";
-                file.open(filename);
+                file.open(dotFilename);
                 exportPipeline(p_helper->pipeline, p_helper->p_compSpec->aliases, file);
                 file.close();
 
                 root.getInfoStream()
-                    << "Graph stored to: '" << (std::filesystem::current_path() / filename) << "'"
-                    << std::endl;
+                    << "Graph stored to: '" << (std::filesystem::current_path() / dotFilename)
+                    << "'" << std::endl;
             }
             {
                 std::ofstream file;
-                String filename = filePrefix + ".glsl";
-                file.open(filename);
+                file.open(glslFilename);
                 file << srcCode;
                 file.close();
 
                 root.getInfoStream()
-                    << "Shader stored to: '" << (std::filesystem::current_path() / filename) << "'"
-                    << std::endl;
+                    << "Shader stored to: '" << (std::filesystem::current_path() / glslFilename)
+                    << "'" << std::endl;
             }
 
             // compile
@@ -812,7 +812,8 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
             glGetShaderInfoLog(p_helper->shaderId, sizeof(cmplLog), nullptr, cmplLog);
             glGetShaderiv(p_helper->shaderId, GL_COMPILE_STATUS, &success);
             if (!success) {
-                root.getErrStream() << "Shader compilation error: " << cmplLog << std::endl;
+                root.getErrStream() << "Shader compilation error: file: " << glslFilename << "\n"
+                                    << cmplLog << std::endl;
             } else {
                 root.getInfoStream() << "Shader compiled! " << cmplLog << std::endl;
             }
