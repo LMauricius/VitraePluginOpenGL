@@ -37,6 +37,8 @@ class OpenGLComposeCompute : public ComposeCompute {
     SetupParams m_params;
     String m_friendlyName;
 
+    ParamList m_outputSpecs;
+
     struct ProgramPerAliases
     {
         ParamList inputSpecs, filterSpecs, consumeSpecs;

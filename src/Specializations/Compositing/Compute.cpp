@@ -18,9 +18,14 @@ namespace Vitrae
 
 OpenGLComposeCompute::OpenGLComposeCompute(const SetupParams &params) : m_params(params)
 {
+    // Token params
+    for (const auto &tokenName : params.outputTokenNames) {
+        m_outputSpecs.insert_back({.name = tokenName, .typeInfo = TYPE_INFO<void>});
+    }
+
     // friendly name gen
     m_friendlyName = "Compute\n";
-    for (const auto &spec : params.outputSpecs.getSpecList()) {
+    for (const auto &spec : params.iterationOutputSpecs.getSpecList()) {
         m_friendlyName += "- " + spec.name + "\n";
     }
     m_friendlyName += "[";
@@ -59,7 +64,7 @@ const ParamList &OpenGLComposeCompute::getInputSpecs(const ParamAliases &aliases
 
 const ParamList &OpenGLComposeCompute::getOutputSpecs() const
 {
-    return m_params.outputSpecs;
+    return m_outputSpecs;
 }
 
 const ParamList &OpenGLComposeCompute::getFilterSpecs(const ParamAliases &aliases) const
@@ -77,8 +82,8 @@ void OpenGLComposeCompute::extractUsedTypes(std::set<const TypeInfo *> &typeSet,
 {
     const auto &specs = getProgramPerAliases(aliases);
 
-    for (const ParamList *p_specs :
-         {&specs.inputSpecs, &m_params.outputSpecs, &specs.filterSpecs, &specs.consumeSpecs}) {
+    for (const ParamList *p_specs : {&specs.inputSpecs, &m_params.iterationOutputSpecs,
+                                     &specs.filterSpecs, &specs.consumeSpecs}) {
         for (const ParamSpec &spec : p_specs->getSpecList()) {
             typeSet.insert(&spec.typeInfo);
         }
@@ -118,7 +123,7 @@ void OpenGLComposeCompute::run(RenderComposeContext args) const
         }
 
         for (auto p_specs :
-             {&m_params.outputSpecs, (const ParamList *)&programPerAliases.filterSpecs}) {
+             {&m_params.iterationOutputSpecs, (const ParamList *)&programPerAliases.filterSpecs}) {
             for (auto nameId : p_specs->getSpecNameIds()) {
                 if (!args.properties.has(nameId)) {
                     needsToRun = true;
@@ -152,7 +157,7 @@ void OpenGLComposeCompute::run(RenderComposeContext args) const
     // compile shader for this compute execution
     dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader =
         shaderCacher.retrieve_asset({CompiledGLSLShader::ComputeShaderParams(
-            m_params.root, args.aliases, m_params.outputSpecs,
+            m_params.root, args.aliases, m_params.iterationOutputSpecs,
             m_params.computeSetup.invocationCountX, m_params.computeSetup.invocationCountY,
             m_params.computeSetup.invocationCountZ, decidedGroupSize,
             m_params.computeSetup.allowOutOfBoundsCompute)});
@@ -209,7 +214,7 @@ OpenGLComposeCompute::ProgramPerAliases &OpenGLComposeCompute::getProgramPerAlia
         // compile shader for this compute execution
         dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader =
             shaderCacher.retrieve_asset({CompiledGLSLShader::ComputeShaderParams(
-                m_params.root, aliases, m_params.outputSpecs,
+                m_params.root, aliases, m_params.iterationOutputSpecs,
                 m_params.computeSetup.invocationCountX, m_params.computeSetup.invocationCountY,
                 m_params.computeSetup.invocationCountZ, decidedGroupSize,
                 m_params.computeSetup.allowOutOfBoundsCompute)});
