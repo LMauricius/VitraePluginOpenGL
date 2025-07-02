@@ -160,8 +160,13 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
                 assert(false);
             }
 
-            p_helper->pipeline =
-                Pipeline<ShaderTask>(p_method, passedVarSpecs, p_helper->p_compSpec->aliases);
+            try {
+                p_helper->pipeline =
+                    Pipeline<ShaderTask>(p_method, passedVarSpecs, p_helper->p_compSpec->aliases);
+            }
+            catch (const PipelineSetupException &ex) {
+                throw std::runtime_error(String("Shader compilation failed: ") + ex.what());
+            }
 
             // stage-specific required inputs
             if (p_helper->p_compSpec->shaderType == GL_COMPUTE_SHADER) {

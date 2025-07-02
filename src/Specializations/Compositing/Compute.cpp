@@ -212,22 +212,38 @@ OpenGLComposeCompute::ProgramPerAliases &OpenGLComposeCompute::getProgramPerAlia
         glm::ivec3 decidedGroupSize = {1, 1, 1};
 
         // compile shader for this compute execution
-        dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader =
-            shaderCacher.retrieve_asset({CompiledGLSLShader::ComputeShaderParams(
-                m_params.root, aliases, m_params.iterationOutputSpecs,
-                m_params.computeSetup.invocationCountX, m_params.computeSetup.invocationCountY,
-                m_params.computeSetup.invocationCountZ, decidedGroupSize,
-                m_params.computeSetup.allowOutOfBoundsCompute)});
+        try {
+            dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader =
+                shaderCacher.retrieve_asset({CompiledGLSLShader::ComputeShaderParams(
+                    m_params.root, aliases, m_params.iterationOutputSpecs,
+                    m_params.computeSetup.invocationCountX, m_params.computeSetup.invocationCountY,
+                    m_params.computeSetup.invocationCountZ, decidedGroupSize,
+                    m_params.computeSetup.allowOutOfBoundsCompute)});
 
-        return *(*m_programPerAliasHash
-                      .emplace(aliases.hash(),
-                               new ProgramPerAliases{
-                                   .inputSpecs = p_compiledShader->inputSpecs,
-                                   .filterSpecs = p_compiledShader->filterSpecs,
-                                   .consumeSpecs = p_compiledShader->consumingSpecs,
-                               })
-                      .first)
-                    .second;
+            return *(*m_programPerAliasHash
+                          .emplace(aliases.hash(),
+                                   new ProgramPerAliases{
+                                       .inputSpecs = p_compiledShader->inputSpecs,
+                                       .filterSpecs = p_compiledShader->filterSpecs,
+                                       .consumeSpecs = p_compiledShader->consumingSpecs,
+                                   })
+                          .first)
+                        .second;
+        }
+        catch (std::exception &e) {
+            m_params.root.getErrStream()
+                << "During OpenGLComposeCompute compilation: " << e.what() << std::endl;
+
+            return *(*m_programPerAliasHash
+                          .emplace(aliases.hash(),
+                                   new ProgramPerAliases{
+                                       .inputSpecs = {},
+                                       .filterSpecs = {},
+                                       .consumeSpecs = {},
+                                   })
+                          .first)
+                        .second;
+        }
     }
 }
 
