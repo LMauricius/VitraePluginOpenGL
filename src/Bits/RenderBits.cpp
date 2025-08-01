@@ -1,5 +1,7 @@
 #include "VitraePluginOpenGL/Bits/RenderBits.hpp"
 
+#include "Vitrae/Data/Blending.hpp"
+#include "Vitrae/Data/FragmentTest.hpp"
 #include "glad/glad.h"
 // must be after glad.h
 #include "GLFW/glfw3.h"
@@ -8,6 +10,85 @@
 
 namespace Vitrae
 {
+
+namespace
+{
+
+auto convertTestFunction(FragmentTestFunction test)
+{
+    switch (test) {
+    case FragmentTestFunction::Never:
+        return GL_NEVER;
+    case FragmentTestFunction::Less:
+        return GL_LESS;
+    case FragmentTestFunction::LessOrEqual:
+        return GL_LEQUAL;
+    case FragmentTestFunction::Equal:
+        return GL_EQUAL;
+    case FragmentTestFunction::NotEqual:
+        return GL_NOTEQUAL;
+    case FragmentTestFunction::GreaterOrEqual:
+        return GL_GEQUAL;
+    case FragmentTestFunction::Greater:
+        return GL_GREATER;
+    case FragmentTestFunction::Always:
+        return GL_ALWAYS;
+    }
+}
+
+auto convertBlendingOperation(BlendingOperation blending)
+{
+    switch (blending) {
+    case BlendingOperation::Add:
+        return GL_FUNC_ADD;
+    case BlendingOperation::Subtract:
+        return GL_FUNC_SUBTRACT;
+    case BlendingOperation::ReverseSubtract:
+        return GL_FUNC_REVERSE_SUBTRACT;
+    case BlendingOperation::Min:
+        return GL_MIN;
+    case BlendingOperation::Max:
+        return GL_MAX;
+    }
+};
+
+auto convertBlendingFactor(BlendingFactor blending)
+{
+    switch (blending) {
+    case BlendingFactor::Zero:
+        return GL_ZERO;
+    case BlendingFactor::One:
+        return GL_ONE;
+    case BlendingFactor::SourceColor:
+        return GL_SRC_COLOR;
+    case BlendingFactor::OneMinusSourceColor:
+        return GL_ONE_MINUS_SRC_COLOR;
+    case BlendingFactor::DestinationColor:
+        return GL_DST_COLOR;
+    case BlendingFactor::OneMinusDestinationColor:
+        return GL_ONE_MINUS_DST_COLOR;
+    case BlendingFactor::SourceAlpha:
+        return GL_SRC_ALPHA;
+    case BlendingFactor::OneMinusSourceAlpha:
+        return GL_ONE_MINUS_SRC_ALPHA;
+    case BlendingFactor::DestinationAlpha:
+        return GL_DST_ALPHA;
+    case BlendingFactor::OneMinusDestinationAlpha:
+        return GL_ONE_MINUS_DST_ALPHA;
+    case BlendingFactor::ConstantColor:
+        return GL_CONSTANT_COLOR;
+    case BlendingFactor::OneMinusConstantColor:
+        return GL_ONE_MINUS_CONSTANT_COLOR;
+    case BlendingFactor::ConstantAlpha:
+        return GL_CONSTANT_ALPHA;
+    case BlendingFactor::OneMinusConstantAlpha:
+        return GL_ONE_MINUS_CONSTANT_ALPHA;
+    case BlendingFactor::SourceAlphaSaturated:
+        return GL_SRC_ALPHA_SATURATE;
+    }
+};
+
+} // namespace
 void stateSetupRasterizing(const RasterizingSetupParams &params)
 {
     MMETER_FUNC_PROFILER;
@@ -15,8 +96,12 @@ void stateSetupRasterizing(const RasterizingSetupParams &params)
     {
         MMETER_SCOPE_PROFILER("General setup");
 
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
+        if (params.depthTest == FragmentTestFunction::Always) {
+            glDisable(GL_DEPTH_TEST);
+        } else {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(convertTestFunction(params.depthTest));
+        }
 
         switch (params.cullingMode) {
         case CullingMode::None:
@@ -48,50 +133,17 @@ void stateSetupRasterizing(const RasterizingSetupParams &params)
             glLineWidth(params.lineWidth);
         }
 
-        auto convertBlending = [](BlendingFunction blending) {
-            switch (blending) {
-            case BlendingFunction::Zero:
-                return GL_ZERO;
-            case BlendingFunction::One:
-                return GL_ONE;
-            case BlendingFunction::SourceColor:
-                return GL_SRC_COLOR;
-            case BlendingFunction::OneMinusSourceColor:
-                return GL_ONE_MINUS_SRC_COLOR;
-            case BlendingFunction::DestinationColor:
-                return GL_DST_COLOR;
-            case BlendingFunction::OneMinusDestinationColor:
-                return GL_ONE_MINUS_DST_COLOR;
-            case BlendingFunction::SourceAlpha:
-                return GL_SRC_ALPHA;
-            case BlendingFunction::OneMinusSourceAlpha:
-                return GL_ONE_MINUS_SRC_ALPHA;
-            case BlendingFunction::DestinationAlpha:
-                return GL_DST_ALPHA;
-            case BlendingFunction::OneMinusDestinationAlpha:
-                return GL_ONE_MINUS_DST_ALPHA;
-            case BlendingFunction::ConstantColor:
-                return GL_CONSTANT_COLOR;
-            case BlendingFunction::OneMinusConstantColor:
-                return GL_ONE_MINUS_CONSTANT_COLOR;
-            case BlendingFunction::ConstantAlpha:
-                return GL_CONSTANT_ALPHA;
-            case BlendingFunction::OneMinusConstantAlpha:
-                return GL_ONE_MINUS_CONSTANT_ALPHA;
-            case BlendingFunction::SourceAlphaSaturated:
-                return GL_SRC_ALPHA_SATURATE;
-            }
-            return GL_ZERO;
-        };
-
         glDepthMask(params.writeDepth);
-        glBlendFunc(convertBlending(params.sourceBlending),
-                    convertBlending(params.destinationBlending));
-        if (params.sourceBlending == BlendingFunction::One &&
-            params.destinationBlending == BlendingFunction::Zero) {
+        if (params.blending == BlendingCommon::None) {
             glDisable(GL_BLEND);
         } else {
             glEnable(GL_BLEND);
+            glBlendEquationSeparate(convertBlendingOperation(params.blending.operationRGB),
+                                    convertBlendingOperation(params.blending.operationAlpha));
+            glBlendFuncSeparate(convertBlendingFactor(params.blending.sourceRGB),
+                                convertBlendingFactor(params.blending.destinationRGB),
+                                convertBlendingFactor(params.blending.sourceAlpha),
+                                convertBlendingFactor(params.blending.destinationAlpha));
         }
     }
 
@@ -108,6 +160,8 @@ void stateSetupRasterizing(const RasterizingSetupParams &params)
             break;
         case RasterizingMode::DerivationalDotVertices:
             glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+            break;
+        default:
             break;
         }
     }
