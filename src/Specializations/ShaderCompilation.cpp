@@ -4,7 +4,6 @@
 #include "Vitrae/Collections/MethodCollection.hpp"
 #include "Vitrae/Debugging/PipelineExport.hpp"
 #include "Vitrae/Params/ParamList.hpp"
-#include "Vitrae/Params/Standard.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
 #include "MMeter.h"
