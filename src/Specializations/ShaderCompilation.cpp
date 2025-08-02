@@ -49,18 +49,18 @@ CompiledGLSLShader::ComputeShaderParams::ComputeShaderParams(
 CompiledGLSLShader::CompiledGLSLShader(const SurfaceShaderParams &params)
     : CompiledGLSLShader(
           {{
-              CompilationSpec{.aliases = ParamAliases(
-                                  std::initializer_list{
-                                      &params.getAliases(),
-                                  },
-                                  {
-                                      {"gl_Position", params.getVertexPositionOutputName()},
-                                  }),
-                              .outVarPrefix = "vert_",
-                              .shaderType = GL_VERTEX_SHADER},
-              CompilationSpec{.aliases = ParamAliases(std::initializer_list{
+              CompilationSpec{
+                  .aliases = ParamAliases({{
+                                              &params.getAliases(),
+                                          }},
+                                          {
+                                              {"gl_Position", params.getVertexPositionOutputName()},
+                                          }),
+                  .outVarPrefix = "vert_",
+                  .shaderType = GL_VERTEX_SHADER},
+              CompilationSpec{.aliases = ParamAliases({{
                                   &params.getAliases(),
-                              }),
+                              }}),
                               .outVarPrefix = "frag_",
                               .shaderType = GL_FRAGMENT_SHADER},
           }},
@@ -71,9 +71,9 @@ CompiledGLSLShader::CompiledGLSLShader(const ComputeShaderParams &params)
     : CompiledGLSLShader(
           {{
               CompilationSpec{
-                  .aliases = ParamAliases(std::initializer_list{
+                  .aliases = ParamAliases({{
                       &params.getAliases(),
-                  }),
+                  }}),
                   .outVarPrefix = "comp_",
                   .shaderType = GL_COMPUTE_SHADER,
                   .computeSpec =
