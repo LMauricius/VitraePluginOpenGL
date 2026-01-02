@@ -1,4 +1,4 @@
-#include "VitraePluginOpenGL/Specializations/Texture.hpp"
+#include "VitraePluginOpenGL/Specializations/TensorBuffer.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Data/BufferFormat.hpp"
 #include "Vitrae/Setup/TextureFiltering.hpp"
@@ -695,15 +695,15 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
 
 } // namespace
 
-OpenGLTextureBit::OpenGLTextureBit() {}
+OpenGLTensorBufferBit::OpenGLTensorBufferBit() {}
 
-OpenGLTextureBit::~OpenGLTextureBit()
+OpenGLTensorBufferBit::~OpenGLTensorBufferBit()
 {
     glDeleteTextures(1, &glTextureId);
 }
 
-void OpenGLTextureBit::setupFromFile(BufferType bufferType,
-                                     const ImageCommon::FileLoadParams &params)
+void OpenGLTensorBufferBit::setupFromFile(BufferType bufferType,
+                                          const ImageCommon::FileLoadParams &params)
 {
     m_sentToGPU = true;
     glGenTextures(1, &glTextureId);
@@ -733,7 +733,7 @@ void OpenGLTextureBit::setupFromFile(BufferType bufferType,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLTextureBit::setupFromColor(AnyBufferFormat bufferFormat, const void *pixelData)
+void OpenGLTensorBufferBit::setupFromColor(AnyBufferFormat bufferFormat, const void *pixelData)
 {
     m_sentToGPU = true;
     glGenTextures(1, &glTextureId);
@@ -768,9 +768,9 @@ void OpenGLTextureBit::setupFromColor(AnyBufferFormat bufferFormat, const void *
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLTextureBit::setupEmpty(const glm::uvec4 &ndSize, AnyBufferFormat bufferFormat,
-                                  const glm::vec<4, ChannelSource> &swizzleSpec,
-                                  const TextureFilteringParams &filtering, String friendlyName)
+void OpenGLTensorBufferBit::setupEmpty(const glm::uvec4 &ndSize, AnyBufferFormat bufferFormat,
+                                       const glm::vec<4, ChannelSource> &swizzleSpec,
+                                       const TextureFilteringParams &filtering, String friendlyName)
 {
     m_sentToGPU = false;
     glGenTextures(1, &glTextureId);
@@ -791,7 +791,7 @@ void OpenGLTextureBit::setupEmpty(const glm::uvec4 &ndSize, AnyBufferFormat buff
 
 // ---- 1D -----------------------------------------------------------------------------------------
 
-void OpenGLTexture1DBit::setSize(int width, int height, int count)
+void OpenGLTensorBuffer1DBit::setSize(int width, int height, int count)
 {
     m_size = width;
     if (height != 1) {
@@ -802,10 +802,12 @@ void OpenGLTexture1DBit::setSize(int width, int height, int count)
     }
 }
 
-void OpenGLTexture1DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load)
+void OpenGLTensorBuffer1DBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                            std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
-        throw std::runtime_error("OpenGLTexture1DBit::loadDataToGPU: number of buffers must be 1");
+        throw std::runtime_error(
+            "OpenGLTensorBuffer1DBit::loadDataToGPU: number of buffers must be 1");
     }
     glTextureStorage1D(glTextureId, 1, storage.internalFormat, m_size);
     glTextureSubImage1D(glTextureId, 0, 0, m_size, load[0].metaData.format, load[0].metaData.type,
@@ -814,7 +816,7 @@ void OpenGLTexture1DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<c
 
 // ---- 2D -----------------------------------------------------------------------------------------
 
-void OpenGLTexture2DBit::setSize(int width, int height, int count)
+void OpenGLTensorBuffer2DBit::setSize(int width, int height, int count)
 {
     m_size = glm::uvec2(width, height);
     if (count != 1) {
@@ -822,10 +824,12 @@ void OpenGLTexture2DBit::setSize(int width, int height, int count)
     }
 }
 
-void OpenGLTexture2DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load)
+void OpenGLTensorBuffer2DBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                            std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
-        throw std::runtime_error("OpenGLTexture2DBit::loadDataToGPU: number of buffers must be 1");
+        throw std::runtime_error(
+            "OpenGLTensorBuffer2DBit::loadDataToGPU: number of buffers must be 1");
     }
     glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y);
     glTextureSubImage2D(glTextureId, 0, 0, 0, m_size.x, m_size.y, load[0].metaData.format,
@@ -834,15 +838,17 @@ void OpenGLTexture2DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<c
 
 // ---- 3D -----------------------------------------------------------------------------------------
 
-void OpenGLTexture3DBit::setSize(int width, int height, int count)
+void OpenGLTensorBuffer3DBit::setSize(int width, int height, int count)
 {
     m_size = glm::uvec3(width, height, 1);
 }
 
-void OpenGLTexture3DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load)
+void OpenGLTensorBuffer3DBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                            std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
-        throw std::runtime_error("OpenGLTexture3DBit::loadDataToGPU: number of buffers must be 1");
+        throw std::runtime_error(
+            "OpenGLTensorBuffer3DBit::loadDataToGPU: number of buffers must be 1");
     }
     glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_size.z);
     glTextureSubImage3D(glTextureId, 0, 0, 0, 0, m_size.x, m_size.y, m_size.z,
@@ -851,7 +857,7 @@ void OpenGLTexture3DBit::loadDataToGPU(const GpuFormatInfo &storage, std::span<c
 
 // ---- Cube ---------------------------------------------------------------------------------------
 
-void OpenGLTextureCubeBit::setSize(int width, int height, int count)
+void OpenGLTensorBufferCubeBit::setSize(int width, int height, int count)
 {
     m_size = width;
     if (m_size != height) {
@@ -862,12 +868,12 @@ void OpenGLTextureCubeBit::setSize(int width, int height, int count)
     }
 }
 
-void OpenGLTextureCubeBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                         std::span<const LoadInfo> load)
+void OpenGLTensorBufferCubeBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                              std::span<const LoadInfo> load)
 {
     if (load.size() != 6) {
         throw std::runtime_error(
-            "OpenGLTextureCubeBit::loadDataToGPU: number of buffers must be 6");
+            "OpenGLTensorBufferCubeBit::loadDataToGPU: number of buffers must be 6");
     }
     glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_size);
     for (int i = 1; i < 6; i++) {
@@ -878,14 +884,14 @@ void OpenGLTextureCubeBit::loadDataToGPU(const GpuFormatInfo &storage,
 
 // ---- 1D layered ---------------------------------------------------------------------------------
 
-void OpenGLTexture1DLayeredBit::setSize(int width, int height, int count)
+void OpenGLTensorBuffer1DLayeredBit::setSize(int width, int height, int count)
 {
     m_size = width;
     m_layerCount = count;
 }
 
-void OpenGLTexture1DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                              std::span<const LoadInfo> load)
+void OpenGLTensorBuffer1DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                                   std::span<const LoadInfo> load)
 {
     glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_layerCount);
     for (int i = 0; i < m_layerCount; i++) {
@@ -896,14 +902,14 @@ void OpenGLTexture1DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
 
 // ---- 2D layered ---------------------------------------------------------------------------------
 
-void OpenGLTexture2DLayeredBit::setSize(int width, int height, int count)
+void OpenGLTensorBuffer2DLayeredBit::setSize(int width, int height, int count)
 {
     m_size = {width, height};
     m_layerCount = count;
 }
 
-void OpenGLTexture2DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                              std::span<const LoadInfo> load)
+void OpenGLTensorBuffer2DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                                   std::span<const LoadInfo> load)
 {
     glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_layerCount);
     for (int i = 0; i < m_layerCount; i++) {
@@ -914,7 +920,7 @@ void OpenGLTexture2DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
 
 // ---- Cube layered -------------------------------------------------------------------------------
 
-void OpenGLTextureCubeLayeredBit::setSize(int width, int height, int count)
+void OpenGLTensorBufferCubeLayeredBit::setSize(int width, int height, int count)
 {
     m_size = width;
     if (m_size != height) {
@@ -926,8 +932,8 @@ void OpenGLTextureCubeLayeredBit::setSize(int width, int height, int count)
     m_layerCount = count / 6;
 }
 
-void OpenGLTextureCubeLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                                std::span<const LoadInfo> load)
+void OpenGLTensorBufferCubeLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
+                                                     std::span<const LoadInfo> load)
 {
     glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size, m_size, m_layerCount * 6);
     for (int i = 0; i < m_layerCount * 6; i++) {

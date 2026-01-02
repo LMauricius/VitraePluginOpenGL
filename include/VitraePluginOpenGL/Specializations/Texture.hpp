@@ -1,175 +1,11 @@
 #pragma once
 
 #include "Vitrae/Assets/Texture.hpp"
-#include "Vitrae/Data/BufferFormat.hpp"
-#include "Vitrae/Setup/ImageLoad.hpp"
-#include "Vitrae/Setup/TextureFiltering.hpp"
+#include "VitraePluginOpenGL/Specializations/TensorBuffer.hpp"
 #include "glad/glad.h"
-
-#include <filesystem>
 
 namespace Vitrae
 {
-class ComponentRoot;
-class OpenGLRenderer;
-
-struct GpuFormatInfo
-{
-    union {
-        struct
-        {
-            GLint r, g, b, a;
-        } swizzleVal;
-        GLint swizzleArr[4];
-    };
-    bool useSwizzle;
-
-    GLint internalFormat;
-};
-
-struct CpuDataInfo
-{
-    GLint format;
-    GLenum type;
-    std::size_t bitsPerElement;
-};
-
-struct LoadInfo
-{
-    CpuDataInfo metaData;
-    union {
-        void *pixelData;
-        const void *constPixelData;
-    };
-};
-
-/**
- * A Texture is a single image-like resource
- */
-class OpenGLTextureBit
-{
-  public:
-    OpenGLTextureBit();
-    virtual ~OpenGLTextureBit();
-
-    std::size_t memory_cost() const;
-
-    GLuint glTextureId;
-
-  protected:
-    bool m_sentToGPU;
-
-    void setupFromFile(BufferType bufferType, const ImageCommon::FileLoadParams &params);
-    void setupFromColor(AnyBufferFormat bufferFormat, const void *pixelData);
-    void setupEmpty(const glm::uvec4 &ndSize, AnyBufferFormat bufferFormat,
-                    const glm::vec<4, ChannelSource> &swizzleSpec,
-                    const TextureFilteringParams &filtering, String friendlyName);
-
-    // void readFile(const ImageCommon::FileLoadParams &params);
-    // void createTexture();
-    // void loadFiltering(const GpuFormatInfo &formatInfo, const TextureFilteringParams &filtering);
-    virtual void setSize(int width, int height, int count) = 0;
-    virtual void setSize(glm::uvec4 ndSize) = 0;
-    virtual void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) = 0;
-
-  private:
-};
-
-// ==== Texture dimensioned bits ===================================================================
-
-class OpenGLTexture1DBit : public OpenGLTextureBit
-{
-  public:
-    unsigned int getSize() const { return m_size; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    unsigned int m_size;
-};
-
-class OpenGLTexture2DBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec2 getSize() const { return m_size; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    glm::uvec2 m_size;
-};
-
-class OpenGLTexture3DBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec3 getSize() const { return m_size; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    glm::uvec3 m_size;
-};
-
-class OpenGLTextureCubeBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec3 getSize() const { return {m_size, m_size, 6}; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    unsigned int m_size;
-};
-
-class OpenGLTexture1DLayeredBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec2 getSize() const { return {m_size, m_layerCount}; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    unsigned int m_size;
-    unsigned int m_layerCount;
-};
-
-class OpenGLTexture2DLayeredBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec3 getSize() const { return {m_size, m_layerCount}; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    glm::uvec2 m_size;
-    unsigned int m_layerCount;
-};
-
-class OpenGLTextureCubeLayeredBit : public OpenGLTextureBit
-{
-  public:
-    glm::uvec4 getSize() const { return {m_size, m_size, 6, m_layerCount}; }
-
-  protected:
-    void setSize(int width, int height, int count) override;
-    void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
-
-    unsigned int m_size;
-    unsigned int m_layerCount;
-};
 
 // ==== Texture mix-ins ============================================================================
 
@@ -308,8 +144,7 @@ class OpenGLTextureCubeLayered : public TextureCubemapLayered<TBUFFER_TYPE>,
     }
 };
 
-// ==== TensorBuffer mix-ins
-// ============================================================================
+// ==== TensorBuffer mix-ins =======================================================================
 
 template <BufferType TBUFFER_TYPE>
 class OpenGLTensorBuffer1D : public TensorBuffer1D<TBUFFER_TYPE>, public OpenGLTexture1DBit
