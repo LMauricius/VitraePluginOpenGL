@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Vitrae/Assets/TensorBuffer.hpp"
+#include "Vitrae/Assets/Texture.hpp"
 #include "Vitrae/Data/BufferFormat.hpp"
 #include "Vitrae/Setup/ImageLoad.hpp"
 #include "Vitrae/Setup/TextureFiltering.hpp"
@@ -179,16 +180,16 @@ template <BufferType TBUFFER_TYPE>
 class OpenGLTensorBuffer1D : public TensorBuffer1D<TBUFFER_TYPE>, public OpenGLTensorBuffer1DBit
 {
   public:
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBuffer1D(const Texture1D<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBuffer1D(const Texture1D<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBuffer1D(const Texture1D<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
     }
@@ -197,16 +198,16 @@ template <BufferType TBUFFER_TYPE>
 class OpenGLTensorBuffer2D : public TensorBuffer2D<TBUFFER_TYPE>, public OpenGLTensorBuffer2DBit
 {
   public:
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBuffer2D(const Texture2D<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBuffer2D(const Texture2D<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBuffer2D(const Texture2D<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
     }
@@ -216,16 +217,16 @@ template <BufferType TBUFFER_TYPE>
 class OpenGLTensorBuffer3D : public TensorBuffer3D<TBUFFER_TYPE>, public OpenGLTensorBuffer3DBit
 {
   public:
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBuffer3D(const Texture3D<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBuffer3D(const Texture3D<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBuffer3D(const Texture3D<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
     }
@@ -236,18 +237,30 @@ class OpenGLTensorBufferCube : public TensorBufferCubemap<TBUFFER_TYPE>,
                                public OpenGLTensorBufferCubeBit
 {
   public:
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBufferCube(const TextureCubemap<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBufferCube(const TextureCubemap<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBufferCube(const TextureCubemap<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
+    }
+
+    // For TensorBufferCubemap
+
+    dynasma::SharedPtr<TensorBuffer2D<TBUFFER_TYPE>> getFace(Side side) override
+    {
+        /// TODO: something
+    }
+
+    dynasma::SharedPtr<const TensorBuffer2D<TBUFFER_TYPE>> getFace(Side side) const override
+    {
+        /// TODO: something
     }
 };
 
@@ -256,18 +269,30 @@ class OpenGLTensorBuffer1DLayered : public TensorBuffer1DLayered<TBUFFER_TYPE>,
                                     public OpenGLTensorBuffer1DLayeredBit
 {
   public:
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBuffer1DLayered(const Texture1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBuffer1DLayered(const Texture1DLayered<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBuffer1DLayered(const Texture1DLayered<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
+    }
+
+    // For TensorBuffer1DLayered
+
+    dynasma::SharedPtr<TensorBuffer1D<TBUFFER_TYPE>> getLayer(std::size_t y) override
+    {
+        /// TODO: something
+    }
+
+    dynasma::SharedPtr<const TensorBuffer1D<TBUFFER_TYPE>> getLayer(std::size_t y) const override
+    {
+        /// TODO: something
     }
 };
 
@@ -276,18 +301,30 @@ class OpenGLTensorBuffer2DLayered : public TensorBuffer2DLayered<TBUFFER_TYPE>,
                                     public OpenGLTensorBuffer2DLayeredBit
 {
   public:
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBuffer2DLayered(const Texture2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBuffer2DLayered(const Texture2DLayered<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::PureColorParams &params)
+    OpenGLTensorBuffer2DLayered(const Texture2DLayered<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
+    }
+
+    // For TensorBuffer2DLayered
+
+    dynasma::SharedPtr<TensorBuffer2D<TBUFFER_TYPE>> getLayer(std::size_t z) override
+    {
+        /// TODO: something
+    }
+
+    dynasma::SharedPtr<const TensorBuffer2D<TBUFFER_TYPE>> getLayer(std::size_t z) const override
+    {
+        /// TODO: something
     }
 };
 
@@ -296,21 +333,32 @@ class OpenGLTensorBufferCubeLayered : public TensorBufferCubemapLayered<TBUFFER_
                                       public OpenGLTensorBufferCubeLayeredBit
 {
   public:
-    OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    OpenGLTensorBufferCubeLayered(const TextureCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
     {
         setupFromFile(TBUFFER_TYPE, params);
     }
-    OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
+    OpenGLTensorBufferCubeLayered(const TextureCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
+        setupEmpty(params.size, params.storageFormat, params.swizzle, params.filtering,
                    params.friendlyName);
     }
     OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
+        const TextureCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
     {
         setupFromColor(params.storageFormat, &params.color);
+    }
+
+    // For TensorBufferCubemapLayered
+
+    dynasma::SharedPtr<TensorBufferCubemap<TBUFFER_TYPE>> getLayer(std::size_t z) override
+    {
+        /// TODO: something
+    }
+
+    dynasma::SharedPtr<const TensorBufferCubemap<TBUFFER_TYPE>> getLayer(
+        std::size_t z) const override
+    {
+        /// TODO: something
     }
 };
 

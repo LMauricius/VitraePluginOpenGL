@@ -85,7 +85,7 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
     GLbitfield clearMask = 0;
 
     std::size_t attachmentIndex = 0;
-    for (auto &texSpec : frame.getOutputTextureSpecs()) {
+    for (auto &texSpec : frame.getRenderTextureSpecs()) {
 
         // Either set the clear color for standard buffers, or clear buffer
         // manually

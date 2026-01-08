@@ -8,6 +8,7 @@
 
 #include "MMeter.h"
 
+#include "dynasma/pointer.hpp"
 #include "dynasma/standalone.hpp"
 
 namespace
@@ -25,7 +26,7 @@ static const GLenum drawBufferConstantsOrdered[] = {
 namespace Vitrae
 {
 OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
-    : m_outputTextureSpecs(params.outputTextureSpecs), m_colorAttachmentUnusedIndex(0)
+    : m_renderTextureSpecs(params.renderTextureSpecs), m_colorAttachmentUnusedIndex(0)
 {
 
     GLuint glFramebufferId;
@@ -35,12 +36,12 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
 
     int width = 0, height = 0;
 
-    for (const auto &texSpec : params.outputTextureSpecs) {
-        if (!texSpec.p_texture.has_value()) {
+    for (const auto &texSpec : params.renderTextureSpecs) {
+        if (texSpec.p_texture == dynasma::FirmPtr<Texture2DBase>{}) {
             continue;
         }
 
-        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
+        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture);
 
         if (width == 0 && height == 0) {
             width = p_texture->getSize().x;
@@ -53,8 +54,14 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
         std::visit(Overloaded{
                        [&](const FixedRenderComponent &comp) {
                            switch (comp) {
-                           case FixedRenderComponent::Depth:
+                           case FixedRenderComponent::DEPTH:
                                attachment = GL_DEPTH_ATTACHMENT;
+                               break;
+                           case FixedRenderComponent::STENCIL:
+                               attachment = GL_STENCIL_ATTACHMENT;
+                               break;
+                           case FixedRenderComponent::DEPTH_AND_STENCIL:
+                               attachment = GL_DEPTH_STENCIL_ATTACHMENT;
                                break;
                            }
                        },
@@ -227,7 +234,7 @@ dynasma::FirmPtr<const ParamList> OpenGLFrameStore::getRenderComponents() const
     return mp_renderComponents;
 }
 
-std::span<const FrameStore::OutputTextureSpec> OpenGLFrameStore::getOutputTextureSpecs() const
+std::span<const FrameStore::OutputTextureSpec> OpenGLFrameStore::getRenderTextureSpecs() const
 {
     return m_outputTextureSpecs;
 }

@@ -2,6 +2,7 @@
 
 #include "Vitrae/Assets/Material.hpp"
 
+#include "Vitrae/Data/BufferFormat.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
 #include "VitraePluginOpenGL/Specializations/Compositing/ClearRender.hpp"
@@ -22,6 +23,8 @@
 #include "dynasma/cachers/basic.hpp"
 #include "dynasma/keepers/naive.hpp"
 #include "dynasma/managers/basic.hpp"
+#include "dynasma/pointer.hpp"
+#include "dynasma/standalone.hpp"
 
 namespace VitraePluginOpenGL
 {
@@ -35,7 +38,6 @@ void setup(Vitrae::ComponentRoot &root)
     // clang-format off
     root.setComponent<              MeshKeeper>(new  dynasma::NaiveKeeper<              MeshKeeperSeed, std::allocator<              OpenGLMesh>>());
     root.setComponent<          MaterialKeeper>(new  dynasma::NaiveKeeper<          MaterialKeeperSeed, std::allocator<                Material>>());
-    root.setComponent<          TextureManager>(new dynasma::BasicManager<                 TextureSeed, std::allocator<           OpenGLTexture>>());
     root.setComponent<       FrameStoreManager>(new dynasma::BasicManager<              FrameStoreSeed, std::allocator<        OpenGLFrameStore>>());
     root.setComponent<   RawSharedBufferKeeper>(new  dynasma::NaiveKeeper<   RawSharedBufferKeeperSeed, std::allocator<   OpenGLRawSharedBuffer>>());
     root.setComponent<    ShaderConstantKeeper>(new  dynasma::NaiveKeeper<    ShaderConstantKeeperSeed, std::allocator<    OpenGLShaderConstant>>());
@@ -48,6 +50,22 @@ void setup(Vitrae::ComponentRoot &root)
     root.setComponent<    ComposeComputeKeeper>(new  dynasma::NaiveKeeper<    ComposeComputeKeeperSeed, std::allocator<    OpenGLComposeCompute>>());
     root.setComponent<ComposeClearRenderKeeper>(new  dynasma::NaiveKeeper<ComposeClearRenderKeeperSeed, std::allocator<OpenGLComposeClearRender>>());
     root.setComponent<CompiledGLSLShaderCacher>(new  dynasma::BasicCacher<CompiledGLSLShaderCacherSeed, std::allocator<      CompiledGLSLShader>>());
+
+    {
+        constexpr auto BT = BufferType::COUNT_SCALAR;
+
+        dynasma::FirmPtr<TextureCubemap<BT>> p = dynasma::makeStandalone<OpenGLTextureCube<BT>>(TextureCubemap<BT>::EmptyParams{root});
+    }
+
+    forBufferTypes([&]<BufferType BT> {
+        root.setComponent<TextureManager<             Texture1D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture1D<BT> >, std::allocator<          OpenGLTexture1D<BT> >>());
+        root.setComponent<TextureManager<             Texture2D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture2D<BT> >, std::allocator<          OpenGLTexture2D<BT> >>());
+        root.setComponent<TextureManager<             Texture3D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture3D<BT> >, std::allocator<          OpenGLTexture3D<BT> >>());
+        //root.setComponent<TextureManager<        TextureCubemap<BT> >>(new dynasma::BasicManager<TextureSeed<        TextureCubemap<BT> >, std::allocator<        OpenGLTextureCube<BT> >>());
+        //root.setComponent<TextureManager<      Texture1DLayered<BT> >>(new dynasma::BasicManager<TextureSeed<      Texture1DLayered<BT> >, std::allocator<   OpenGLTexture1DLayered<BT> >>());
+        //root.setComponent<TextureManager<      Texture2DLayered<BT> >>(new dynasma::BasicManager<TextureSeed<      Texture2DLayered<BT> >, std::allocator<   OpenGLTexture2DLayered<BT> >>());
+        //root.setComponent<TextureManager< TextureCubemapLayered<BT> >>(new dynasma::BasicManager<TextureSeed< TextureCubemapLayered<BT> >, std::allocator< OpenGLTextureCubeLayered<BT> >>());
+    });
     // clang-format on
 }
 
