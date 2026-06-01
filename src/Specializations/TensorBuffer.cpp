@@ -702,6 +702,11 @@ OpenGLTensorBufferBit::~OpenGLTensorBufferBit()
     glDeleteTextures(1, &glTextureId);
 }
 
+std::size_t OpenGLTensorBufferBit::gpuMemoryCostBit() const
+{
+    return 0;
+}
+
 void OpenGLTensorBufferBit::setupFromFile(BufferType bufferType,
                                           const ImageCommon::FileLoadParams &params)
 {
