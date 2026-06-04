@@ -2,12 +2,8 @@
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Data/BufferFormat.hpp"
 #include "Vitrae/Setup/TextureFiltering.hpp"
-#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
 #include "stb/stb_image.h"
-
-#include <map>
-#include <vector>
 
 namespace Vitrae
 {

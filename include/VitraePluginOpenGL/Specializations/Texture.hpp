@@ -17,15 +17,15 @@ class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TBUFFER_T
   public:
     using BufferT = OpenGLTensorBuffer1D<TBUFFER_TYPE>;
 
-    OpenGLTexture1D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture1D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture1D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -61,15 +61,15 @@ class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TBUFFER_T
   public:
     using BufferT = OpenGLTensorBuffer2D<TBUFFER_TYPE>;
 
-    OpenGLTexture2D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture2D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture2D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -105,15 +105,15 @@ class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TBUFFER_T
   public:
     using BufferT = OpenGLTensorBuffer3D<TBUFFER_TYPE>;
 
-    OpenGLTexture3D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture3D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture3D(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -149,15 +149,15 @@ class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TB
   public:
     using BufferT = OpenGLTensorBufferCube<TBUFFER_TYPE>;
 
-    OpenGLTextureCube(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTextureCube(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTextureCube(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -206,15 +206,15 @@ class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLay
   public:
     using BufferT = OpenGLTensorBuffer1DLayered<TBUFFER_TYPE>;
 
-    OpenGLTexture1DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture1DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture1DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -263,15 +263,15 @@ class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLay
   public:
     using BufferT = OpenGLTensorBuffer2DLayered<TBUFFER_TYPE>;
 
-    OpenGLTexture2DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture2DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTexture2DLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
@@ -321,15 +321,15 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
   public:
     using BufferT = OpenGLTensorBufferCubeLayered<TBUFFER_TYPE>;
 
-    OpenGLTextureCubeLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTextureCubeLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
-    OpenGLTextureCubeLayered(dynasma::TypeErasedReferenceCounter *p_ctr,
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
