@@ -92,7 +92,7 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
         std::visit(Overloaded{
                        [&](const FixedRenderComponent &comp) {
                            switch (comp) {
-                           case FixedRenderComponent::Depth:
+                           case FixedRenderComponent::DEPTH:
                                // Check the color type
                                std::visit(Overloaded{
                                               [&](const FixedClearColor &colInd) {

@@ -1,12 +1,13 @@
 #include "VitraePluginOpenGL/Specializations/Mesh.hpp"
 #include "Vitrae/Assets/Material.hpp"
+#include "Vitrae/Collections/AssimpConv.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Collections/MeshGenerator.hpp"
 #include "Vitrae/Data/Typedefs.hpp"
-#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
-#include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 #include "Vitrae/TypeConversion/AssimpCvt.hpp"
 #include "Vitrae/TypeConversion/StringCvt.hpp"
+#include "VitraePluginOpenGL/Specializations/Renderer.hpp"
+#include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 
 #include <map>
 #include <vector>
@@ -17,6 +18,7 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
     : m_root(params.root), m_sentToGPU(false), m_aabb{{}, {}}
 {
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(params.root.getComponent<Renderer>());
+    AssimpConvCollection &conv = params.root.getComponent<AssimpConvCollection>();
 
     // properties
     m_frontSideOrientation = FrontSideOrientation::CounterClockwise;
@@ -48,7 +50,7 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
     // load vertices
     auto extractVertexData =
         [&]<class aiType, class glmType = typename aiTypeCvt<aiType>::glmType>(
-            std::span<const ComponentRoot::AiMeshBufferInfo<aiType>> aiBufferInfos) {
+            std::span<const AssimpConvCollection::MeshBufferConv<aiType>> aiBufferInfos) {
             for (auto &info : aiBufferInfos) {
                 // get buffers
                 std::size_t layoutInd = rend.getVertexBufferLayoutIndex(info.name);
@@ -73,10 +75,10 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
             }
         };
 
-    extractVertexData(params.root.getAiMeshBufferInfos<aiVector2D>());
-    extractVertexData(params.root.getAiMeshBufferInfos<aiVector3D>());
-    extractVertexData(params.root.getAiMeshBufferInfos<aiColor3D>());
-    extractVertexData(params.root.getAiMeshBufferInfos<aiColor4D>());
+    extractVertexData(conv.getMeshBufferConvs<aiVector2D>());
+    extractVertexData(conv.getMeshBufferConvs<aiVector3D>());
+    extractVertexData(conv.getMeshBufferConvs<aiColor3D>());
+    extractVertexData(conv.getMeshBufferConvs<aiColor4D>());
 
     m_aabb = {
         {
