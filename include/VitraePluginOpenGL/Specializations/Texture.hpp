@@ -11,22 +11,22 @@ namespace Vitrae
 
 // ==== Texture mix-ins ============================================================================
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBuffer1D<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBuffer1D<TPIXEL_TYPE>;
 
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture1D<TBUFFER_TYPE>::FileLoadParams &params)
+                    const Texture1D<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture1D<TBUFFER_TYPE>::EmptyParams &params)
+                    const Texture1D<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture1D<TBUFFER_TYPE>::PureColorParams &params)
+                    const Texture1D<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -36,18 +36,18 @@ class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TBUFFER_T
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     unsigned int getSize() const override { return p_buffer->getSize(); }
 
     // ---- For Texture1D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer1D<TBUFFER_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::IndirectPtr<TensorBuffer1D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer1D<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBuffer1D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -55,22 +55,22 @@ class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TBUFFER_T
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBuffer2D<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBuffer2D<TPIXEL_TYPE>;
 
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture2D<TBUFFER_TYPE>::FileLoadParams &params)
+                    const Texture2D<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture2D<TBUFFER_TYPE>::EmptyParams &params)
+                    const Texture2D<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture2D<TBUFFER_TYPE>::PureColorParams &params)
+                    const Texture2D<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -80,18 +80,18 @@ class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TBUFFER_T
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec2 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For Texture2D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer2D<TBUFFER_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::IndirectPtr<TensorBuffer2D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer2D<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBuffer2D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -99,22 +99,22 @@ class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TBUFFER_T
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBuffer3D<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBuffer3D<TPIXEL_TYPE>;
 
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture3D<TBUFFER_TYPE>::FileLoadParams &params)
+                    const Texture3D<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture3D<TBUFFER_TYPE>::EmptyParams &params)
+                    const Texture3D<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
-                    const Texture3D<TBUFFER_TYPE>::PureColorParams &params)
+                    const Texture3D<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -124,18 +124,18 @@ class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TBUFFER_T
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec3 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For Texture3D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer3D<TBUFFER_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::IndirectPtr<TensorBuffer3D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer3D<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBuffer3D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -143,22 +143,22 @@ class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TBUFFER_T
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBufferCube<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBufferCube<TPIXEL_TYPE>;
 
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
-                      const TextureCubemap<TBUFFER_TYPE>::FileLoadParams &params)
+                      const TextureCubemap<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
-                      const TextureCubemap<TBUFFER_TYPE>::EmptyParams &params)
+                      const TextureCubemap<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
-                      const TextureCubemap<TBUFFER_TYPE>::PureColorParams &params)
+                      const TextureCubemap<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -168,31 +168,28 @@ class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TB
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec3 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For TextureCubemap ----------------------------------------
 
-    dynasma::IndirectPtr<Texture2D<TBUFFER_TYPE>> getFace(Side side) override
+    dynasma::IndirectPtr<Texture2D<TPIXEL_TYPE>> getFace(Side side) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture2D<TBUFFER_TYPE>> getFace(Side side) const override
+    dynasma::IndirectPtr<const Texture2D<TPIXEL_TYPE>> getFace(Side side) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBufferCubemap<TBUFFER_TYPE>> getBuffer() override
-    {
-        return p_buffer;
-    }
+    dynasma::IndirectPtr<TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBufferCubemap<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -200,22 +197,22 @@ class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TB
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLayered<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBuffer1DLayered<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBuffer1DLayered<TPIXEL_TYPE>;
 
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+                           const Texture1DLayered<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture1DLayered<TBUFFER_TYPE>::EmptyParams &params)
+                           const Texture1DLayered<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture1DLayered<TBUFFER_TYPE>::PureColorParams &params)
+                           const Texture1DLayered<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -225,31 +222,31 @@ class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLay
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec2 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For Texture1DLayered ----------------------------------------
 
-    dynasma::IndirectPtr<Texture1D<TBUFFER_TYPE>> getLayer(std::size_t layer) override
+    dynasma::IndirectPtr<Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture1D<TBUFFER_TYPE>> getLayer(std::size_t layer) const override
+    dynasma::IndirectPtr<const Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBuffer1DLayered<TBUFFER_TYPE>> getBuffer() override
+    dynasma::IndirectPtr<TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() override
     {
         return p_buffer;
     }
 
-    dynasma::IndirectPtr<const TensorBuffer1DLayered<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -257,22 +254,22 @@ class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLay
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLayered<TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBuffer2DLayered<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBuffer2DLayered<TPIXEL_TYPE>;
 
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+                           const Texture2DLayered<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture2DLayered<TBUFFER_TYPE>::EmptyParams &params)
+                           const Texture2DLayered<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                           const Texture2DLayered<TBUFFER_TYPE>::PureColorParams &params)
+                           const Texture2DLayered<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -282,31 +279,31 @@ class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLay
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec3 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For Texture2DLayered ----------------------------------------
 
-    dynasma::IndirectPtr<Texture2D<TBUFFER_TYPE>> getLayer(std::size_t layer) override
+    dynasma::IndirectPtr<Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture2D<TBUFFER_TYPE>> getLayer(std::size_t layer) const override
+    dynasma::IndirectPtr<const Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBuffer2DLayered<TBUFFER_TYPE>> getBuffer() override
+    dynasma::IndirectPtr<TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() override
     {
         return p_buffer;
     }
 
-    dynasma::IndirectPtr<const TensorBuffer2DLayered<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -314,23 +311,23 @@ class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLay
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
+template <PixelType TPIXEL_TYPE>
 class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
-                                 public TextureCubemapLayered<TBUFFER_TYPE>
+                                 public TextureCubemapLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLTensorBufferCubeLayered<TBUFFER_TYPE>;
+    using BufferT = OpenGLTensorBufferCubeLayered<TPIXEL_TYPE>;
 
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                             const TextureCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
+                             const TextureCubemapLayered<TPIXEL_TYPE>::FileLoadParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                             const TextureCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
+                             const TextureCubemapLayered<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
-                             const TextureCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
+                             const TextureCubemapLayered<TPIXEL_TYPE>::PureColorParams &params)
         : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
     {}
 
@@ -340,32 +337,32 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
 
     // ---- For TextureBaseTyped ----------------------------------------
 
-    CompatibleBufferFormat<TBUFFER_TYPE> getBufferFormat() const override
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        return p_buffer->getBufferFormat();
+        return p_buffer->getPixelFormat();
     }
 
     glm::uvec4 getSize() const override { return p_buffer->getSize(); }
 
     // ---- For TextureCubemapLayered ----------------------------------------
 
-    dynasma::IndirectPtr<TextureCubemap<TBUFFER_TYPE>> getLayer(std::size_t layer) override
+    dynasma::IndirectPtr<TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const TextureCubemap<TBUFFER_TYPE>> getLayer(
+    dynasma::IndirectPtr<const TextureCubemap<TPIXEL_TYPE>> getLayer(
         std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBufferCubemapLayered<TBUFFER_TYPE>> getBuffer() override
+    dynasma::IndirectPtr<TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() override
     {
         return p_buffer;
     }
 
-    dynasma::IndirectPtr<const TensorBufferCubemapLayered<TBUFFER_TYPE>> getBuffer() const override
+    dynasma::IndirectPtr<const TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }

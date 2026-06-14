@@ -1,6 +1,6 @@
 #include "VitraePluginOpenGL/Specializations/TensorBuffer.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
-#include "Vitrae/Data/BufferFormat.hpp"
+#include "Vitrae/Data/PixelTyping.hpp"
 #include "Vitrae/Setup/TextureFiltering.hpp"
 
 #include "stb/stb_image.h"
@@ -12,7 +12,7 @@ namespace Vitrae
 namespace
 {
 
-GLint BUFFER_TYPE_2_GL_CPU_FORMAT[] = {
+GLint PIXEL_TYPE_2_GL_CPU_FORMAT[] = {
     /*       [REAL_SCALAR] = */ GL_RED,
     /*         [REAL_VEC2] = */ GL_RG,
     /*         [REAL_VEC3] = */ GL_RGB,
@@ -30,7 +30,7 @@ GLint BUFFER_TYPE_2_GL_CPU_FORMAT[] = {
     /* [DEPTH_AND_STENCIL] = */ GL_DEPTH_STENCIL,
 };
 
-GLint BUFFER_TYPE_2_GL_CPU_TYPE[] = {
+GLint PIXEL_TYPE_2_GL_CPU_TYPE[] = {
     /*       [REAL_SCALAR] = */ GL_FLOAT,
     /*         [REAL_VEC2] = */ GL_FLOAT,
     /*         [REAL_VEC3] = */ GL_FLOAT,
@@ -189,7 +189,7 @@ GLint DEPTH_AND_STENCIL_2_GL_INTERNAL_FORMAT[] = {
     /* [FLOAT32_UNSIGNED8] = */ GL_DEPTH32F_STENCIL8,
 };
 
-GLint *BUFFER_FORMAT_2_GL_INTERNAL_FORMAT[] = {
+GLint *PIXEL_FORMAT_2_GL_INTERNAL_FORMAT[] = {
     /*       [REAL_SCALAR] = */ REAL_SCALAR_2_GL_INTERNAL_FORMAT,
     /*         [REAL_VEC2] = */ REAL_VEC2_2_GL_INTERNAL_FORMAT,
     /*         [REAL_VEC3] = */ REAL_VEC3_2_GL_INTERNAL_FORMAT,
@@ -207,16 +207,16 @@ GLint *BUFFER_FORMAT_2_GL_INTERNAL_FORMAT[] = {
     /* [DEPTH_AND_STENCIL] = */ DEPTH_AND_STENCIL_2_GL_INTERNAL_FORMAT,
 };
 
-GLint getInternalFormat(AnyBufferFormat bufferFormat)
+GLint getInternalFormat(AnyPixelFormat pixelFormat)
 {
-    // BufferType corresponds to the active index of the variant
-    std::size_t bufferTypeIndex = bufferFormat.index();
-    // BufferFormat retrieval *should* get optimized into just getting an integer since the same
+    // PixelType corresponds to the active index of the variant
+    std::size_t pixelTypeIndex = pixelFormat.index();
+    // PixelFormat retrieval *should* get optimized into just getting an integer since the same
     // code runs for each option
-    std::size_t bufferFormatIndex = std::visit(
-        [&](auto &&bufferType) { return static_cast<std::size_t>(bufferType); }, bufferFormat);
+    std::size_t pixelFormatIndex = std::visit(
+        [&](auto &&pixelType) { return static_cast<std::size_t>(pixelType); }, pixelFormat);
 
-    return BUFFER_FORMAT_2_GL_INTERNAL_FORMAT[bufferTypeIndex][bufferFormatIndex];
+    return PIXEL_FORMAT_2_GL_INTERNAL_FORMAT[pixelTypeIndex][pixelFormatIndex];
 }
 LoadInfo readImageFile(ComponentRoot &root, std::filesystem::path filepath, int &w, int &h,
                        int &stbChannelFormat)
@@ -273,12 +273,12 @@ LoadInfo readImageFile(ComponentRoot &root, std::filesystem::path filepath, int 
     return ret;
 }
 
-GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GLenum dataType)
+GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLenum dataType)
 {
     GpuFormatInfo ret;
 
     switch (internalType) {
-    case BufferType::REAL_SCALAR:
+    case PixelType::REAL_SCALAR:
         ret.useSwizzle = false;
 
         switch (dataType) {
@@ -296,7 +296,7 @@ GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GL
             break;
         }
         break;
-    case BufferType::REAL_VEC2:
+    case PixelType::REAL_VEC2:
         switch (stbChannelFormat) {
         case STBI_grey:
             ret.swizzleVal = {GL_RED, GL_RED, GL_ZERO, GL_ZERO};
@@ -337,7 +337,7 @@ GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GL
             }
         }
         break;
-    case BufferType::REAL_VEC3:
+    case PixelType::REAL_VEC3:
         switch (stbChannelFormat) {
         case STBI_grey:
         case STBI_grey_alpha:
@@ -382,7 +382,7 @@ GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GL
         }
 
         break;
-    case BufferType::REAL_VEC4:
+    case PixelType::REAL_VEC4:
         switch (stbChannelFormat) {
         case STBI_grey:
             ret.swizzleVal = {GL_RED, GL_RED, GL_RED, GL_ONE};
@@ -464,13 +464,13 @@ GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GL
         }
         break;
     default: {
-        // BufferType corresponds to the active index of the variant
-        std::size_t bufferTypeIndex = (std::size_t)internalType;
+        // PixelType corresponds to the active index of the variant
+        std::size_t pixelTypeIndex = (std::size_t)internalType;
 
         // Use the default/first format per buffer type, should be good enough
-        std::size_t bufferFormatIndex = 0;
+        std::size_t pixelFormatIndex = 0;
 
-        ret.internalFormat = BUFFER_FORMAT_2_GL_INTERNAL_FORMAT[bufferTypeIndex][bufferFormatIndex];
+        ret.internalFormat = PIXEL_FORMAT_2_GL_INTERNAL_FORMAT[pixelTypeIndex][pixelFormatIndex];
         break;
     }
     }
@@ -478,17 +478,17 @@ GpuFormatInfo getGpuFormatInfo(BufferType internalType, int stbChannelFormat, GL
     return ret;
 }
 
-GpuFormatInfo getGpuFormatInfo(AnyBufferFormat bufferFormat, glm::vec<4, ChannelSource> swizzleSpec)
+GpuFormatInfo getGpuFormatInfo(AnyPixelFormat pixelFormat, glm::vec<4, ChannelSource> swizzleSpec)
 {
     GpuFormatInfo ret;
 
-    ret.internalFormat = getInternalFormat(bufferFormat);
+    ret.internalFormat = getInternalFormat(pixelFormat);
 
-    BufferType bufferType = static_cast<BufferType>(bufferFormat.index());
+    PixelType pixelType = static_cast<PixelType>(pixelFormat.index());
 
     ret.swizzleVal = {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA};
 
-    for (int i = 0; i < getChannelCount(bufferType); ++i) {
+    for (int i = 0; i < getChannelCount(pixelType); ++i) {
         switch (swizzleSpec[i]) {
         case ChannelSource::SLOT_0:
             ret.swizzleArr[i] = GL_RED;
@@ -517,75 +517,75 @@ GpuFormatInfo getGpuFormatInfo(AnyBufferFormat bufferFormat, glm::vec<4, Channel
     return ret;
 }
 
-CpuDataInfo getNativeCpuDataInfo(BufferType bufferType)
+CpuDataInfo getNativeCpuDataInfo(PixelType pixelType)
 {
     CpuDataInfo ret;
     std::size_t componentBits, componentCount;
 
-    switch (bufferType) {
-    case BufferType::REAL_SCALAR:
-    case BufferType::REAL_VEC2:
-    case BufferType::REAL_VEC3:
-    case BufferType::REAL_VEC4:
+    switch (pixelType) {
+    case PixelType::REAL_SCALAR:
+    case PixelType::REAL_VEC2:
+    case PixelType::REAL_VEC3:
+    case PixelType::REAL_VEC4:
         ret.type = GL_FLOAT;
         componentBits = sizeof(GLfloat) * 8;
         break;
-    case BufferType::WHOLE_SCALAR:
-    case BufferType::WHOLE_VEC2:
-    case BufferType::WHOLE_VEC3:
-    case BufferType::WHOLE_VEC4:
+    case PixelType::WHOLE_SCALAR:
+    case PixelType::WHOLE_VEC2:
+    case PixelType::WHOLE_VEC3:
+    case PixelType::WHOLE_VEC4:
         ret.type = GL_INT;
         componentBits = sizeof(GLint) * 8;
         break;
-    case BufferType::COUNT_SCALAR:
-    case BufferType::COUNT_VEC2:
-    case BufferType::COUNT_VEC3:
-    case BufferType::COUNT_VEC4:
+    case PixelType::COUNT_SCALAR:
+    case PixelType::COUNT_VEC2:
+    case PixelType::COUNT_VEC3:
+    case PixelType::COUNT_VEC4:
         ret.type = GL_UNSIGNED_INT;
         componentBits = sizeof(GLuint) * 8;
         break;
-    case BufferType::DEPTH:
+    case PixelType::DEPTH:
         ret.type = GL_FLOAT;
         componentBits = sizeof(GLfloat) * 8;
         break;
-    case BufferType::STENCIL:
+    case PixelType::STENCIL:
         ret.type = GL_UNSIGNED_INT;
         componentBits = sizeof(GLuint) * 8;
         break;
-    case BufferType::DEPTH_AND_STENCIL:
+    case PixelType::DEPTH_AND_STENCIL:
         ret.type = GL_INVALID_ENUM;
         componentBits = 0;
         break;
     }
 
-    switch (bufferType) {
-    case BufferType::REAL_SCALAR:
-    case BufferType::WHOLE_SCALAR:
-    case BufferType::COUNT_SCALAR:
-    case BufferType::DEPTH:
-    case BufferType::STENCIL:
+    switch (pixelType) {
+    case PixelType::REAL_SCALAR:
+    case PixelType::WHOLE_SCALAR:
+    case PixelType::COUNT_SCALAR:
+    case PixelType::DEPTH:
+    case PixelType::STENCIL:
         ret.format = GL_RED;
         componentCount = 1;
         break;
-    case BufferType::REAL_VEC2:
-    case BufferType::WHOLE_VEC2:
-    case BufferType::COUNT_VEC2:
+    case PixelType::REAL_VEC2:
+    case PixelType::WHOLE_VEC2:
+    case PixelType::COUNT_VEC2:
         ret.format = GL_RG;
         componentCount = 2;
         break;
-    case BufferType::REAL_VEC3:
-    case BufferType::WHOLE_VEC3:
-    case BufferType::COUNT_VEC3:
+    case PixelType::REAL_VEC3:
+    case PixelType::WHOLE_VEC3:
+    case PixelType::COUNT_VEC3:
         ret.format = GL_RGB;
         componentCount = 3;
         break;
-    case BufferType::REAL_VEC4:
-    case BufferType::WHOLE_VEC4:
-    case BufferType::COUNT_VEC4:
+    case PixelType::REAL_VEC4:
+    case PixelType::WHOLE_VEC4:
+    case PixelType::COUNT_VEC4:
         ret.format = GL_RGBA;
         componentCount = 4;
         break;
-    case BufferType::DEPTH_AND_STENCIL:
+    case PixelType::DEPTH_AND_STENCIL:
         ret.format = GL_DEPTH_STENCIL;
         componentCount = 2;
         break;
@@ -703,7 +703,7 @@ std::size_t OpenGLTensorBufferBit::gpuMemoryCostBit() const
     return 0;
 }
 
-void OpenGLTensorBufferBit::setupFromFile(BufferType bufferType,
+void OpenGLTensorBufferBit::setupFromFile(PixelType pixelType,
                                           const ImageCommon::FileLoadParams &params)
 {
     m_sentToGPU = true;
@@ -715,7 +715,7 @@ void OpenGLTensorBufferBit::setupFromFile(BufferType bufferType,
     };
 
     GpuFormatInfo storageInfo =
-        getGpuFormatInfo(bufferType, stbChannelFormat, load[0].metaData.type);
+        getGpuFormatInfo(pixelType, stbChannelFormat, load[0].metaData.type);
 
     loadFiltering(glTextureId, storageInfo, params.filtering);
     setSize(width, height, 1);
@@ -734,22 +734,22 @@ void OpenGLTensorBufferBit::setupFromFile(BufferType bufferType,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLTensorBufferBit::setupFromColor(AnyBufferFormat bufferFormat, const void *pixelData)
+void OpenGLTensorBufferBit::setupFromColor(AnyPixelFormat pixelFormat, const void *pixelData)
 {
     m_sentToGPU = true;
     glGenTextures(1, &glTextureId);
 
-    BufferType bufferType = static_cast<BufferType>(bufferFormat.index());
+    PixelType pixelType = static_cast<PixelType>(pixelFormat.index());
 
     GpuFormatInfo storageInfo = {
         .useSwizzle = false,
 
-        // Use default (first) format for this bufferType
-        .internalFormat = BUFFER_FORMAT_2_GL_INTERNAL_FORMAT[(int)bufferType][0],
+        // Use default (first) format for this pixelType
+        .internalFormat = PIXEL_FORMAT_2_GL_INTERNAL_FORMAT[(int)pixelType][0],
     };
     LoadInfo load[] = {
         {
-            .metaData = getNativeCpuDataInfo(bufferType),
+            .metaData = getNativeCpuDataInfo(pixelType),
             .constPixelData = pixelData,
         },
     };
@@ -769,14 +769,14 @@ void OpenGLTensorBufferBit::setupFromColor(AnyBufferFormat bufferFormat, const v
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLTensorBufferBit::setupEmpty(const glm::uvec4 &ndSize, AnyBufferFormat bufferFormat,
+void OpenGLTensorBufferBit::setupEmpty(const glm::uvec4 &ndSize, AnyPixelFormat pixelFormat,
                                        const glm::vec<4, ChannelSource> &swizzleSpec,
                                        const TextureFilteringParams &filtering, String friendlyName)
 {
     m_sentToGPU = false;
     glGenTextures(1, &glTextureId);
 
-    GpuFormatInfo storageInfo = getGpuFormatInfo(bufferFormat, swizzleSpec);
+    GpuFormatInfo storageInfo = getGpuFormatInfo(pixelFormat, swizzleSpec);
 
     loadFiltering(glTextureId, storageInfo, filtering);
     setSize(ndSize);

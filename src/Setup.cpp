@@ -2,7 +2,7 @@
 
 #include "Vitrae/Assets/Material.hpp"
 
-#include "Vitrae/Data/BufferFormat.hpp"
+#include "Vitrae/Data/PixelTyping.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
 #include "VitraePluginOpenGL/Specializations/Compositing/ClearRender.hpp"
@@ -52,12 +52,12 @@ void setup(Vitrae::ComponentRoot &root)
     root.setComponent<CompiledGLSLShaderCacher>(new dynasma::BasicCacher <CompiledGLSLShaderCacherSeed, std::allocator<      CompiledGLSLShader>>());
 
     {
-        constexpr auto BT = BufferType::COUNT_SCALAR;
+        constexpr auto BT = PixelType::COUNT_SCALAR;
 
         dynasma::FirmPtr<Texture1D<BT>> p = dynasma::makeStandalone<OpenGLTexture1D<BT>>(Texture1D<BT>::EmptyParams{root});
     }
 
-    forBufferTypes([&]<BufferType BT> {
+    forPixelTypes([&]<PixelType BT> {
         root.setComponent<TextureManager<             Texture1D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture1D<BT> >, std::allocator<          OpenGLTexture1D<BT> >>());
         root.setComponent<TextureManager<             Texture2D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture2D<BT> >, std::allocator<          OpenGLTexture2D<BT> >>());
         root.setComponent<TextureManager<             Texture3D<BT> >>(new dynasma::BasicManager<TextureSeed<             Texture3D<BT> >, std::allocator<          OpenGLTexture3D<BT> >>());
