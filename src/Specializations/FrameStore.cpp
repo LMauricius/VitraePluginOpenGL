@@ -188,7 +188,7 @@ void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
                 std::visit(Overloaded{
                                [&](const FixedRenderComponent &comp) {
                                    switch (comp) {
-                                   case FixedRenderComponent::Depth:
+                                   case FixedRenderComponent::DEPTH:
                                        attachment = GL_DEPTH_ATTACHMENT;
                                        break;
                                    }

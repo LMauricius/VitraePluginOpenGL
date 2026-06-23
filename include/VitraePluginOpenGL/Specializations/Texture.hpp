@@ -45,9 +45,9 @@ class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TPIXEL_TY
 
     // ---- For Texture1D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer1D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::PinPtr<TensorBuffer1D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer1D<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBuffer1D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -89,9 +89,9 @@ class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TPIXEL_TY
 
     // ---- For Texture2D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer2D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::PinPtr<TensorBuffer2D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer2D<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBuffer2D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -133,9 +133,9 @@ class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TPIXEL_TY
 
     // ---- For Texture3D ----------------------------------------
 
-    dynasma::IndirectPtr<TensorBuffer3D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::PinPtr<TensorBuffer3D<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer3D<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBuffer3D<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -177,19 +177,19 @@ class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TP
 
     // ---- For TextureCubemap ----------------------------------------
 
-    dynasma::IndirectPtr<Texture2D<TPIXEL_TYPE>> getFace(Side side) override
+    dynasma::PinPtr<Texture2D<TPIXEL_TYPE>> getFace(Side side) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture2D<TPIXEL_TYPE>> getFace(Side side) const override
+    dynasma::PinPtr<const Texture2D<TPIXEL_TYPE>> getFace(Side side) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
+    dynasma::PinPtr<TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBufferCubemap<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -231,22 +231,19 @@ class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLay
 
     // ---- For Texture1DLayered ----------------------------------------
 
-    dynasma::IndirectPtr<Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
+    dynasma::PinPtr<Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
+    dynasma::PinPtr<const Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() override
-    {
-        return p_buffer;
-    }
+    dynasma::PinPtr<TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBuffer1DLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -288,22 +285,19 @@ class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLay
 
     // ---- For Texture2DLayered ----------------------------------------
 
-    dynasma::IndirectPtr<Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
+    dynasma::PinPtr<Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
+    dynasma::PinPtr<const Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() override
-    {
-        return p_buffer;
-    }
+    dynasma::PinPtr<TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() override { return p_buffer; }
 
-    dynasma::IndirectPtr<const TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBuffer2DLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
@@ -346,23 +340,22 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
 
     // ---- For TextureCubemapLayered ----------------------------------------
 
-    dynasma::IndirectPtr<TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) override
+    dynasma::PinPtr<TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<const TextureCubemap<TPIXEL_TYPE>> getLayer(
-        std::size_t layer) const override
+    dynasma::PinPtr<const TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
         /// TODO: something
     }
 
-    dynasma::IndirectPtr<TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() override
+    dynasma::PinPtr<TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() override
     {
         return p_buffer;
     }
 
-    dynasma::IndirectPtr<const TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() const override
+    dynasma::PinPtr<const TensorBufferCubemapLayered<TPIXEL_TYPE>> getBuffer() const override
     {
         return p_buffer;
     }
