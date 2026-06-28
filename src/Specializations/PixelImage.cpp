@@ -803,6 +803,11 @@ void OpenGLPixelImage1DBit::setSize(int width, int height, int count)
     }
 }
 
+void OpenGLPixelImage1DBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = ndSize.x;
+}
+
 void OpenGLPixelImage1DBit::loadDataToGPU(const GpuFormatInfo &storage,
                                             std::span<const LoadInfo> load)
 {
@@ -825,6 +830,11 @@ void OpenGLPixelImage2DBit::setSize(int width, int height, int count)
     }
 }
 
+void OpenGLPixelImage2DBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = {ndSize.x, ndSize.y};
+}
+
 void OpenGLPixelImage2DBit::loadDataToGPU(const GpuFormatInfo &storage,
                                             std::span<const LoadInfo> load)
 {
@@ -842,6 +852,11 @@ void OpenGLPixelImage2DBit::loadDataToGPU(const GpuFormatInfo &storage,
 void OpenGLPixelImage3DBit::setSize(int width, int height, int count)
 {
     m_size = glm::uvec3(width, height, 1);
+}
+
+void OpenGLPixelImage3DBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = {ndSize.x, ndSize.y, ndSize.z};
 }
 
 void OpenGLPixelImage3DBit::loadDataToGPU(const GpuFormatInfo &storage,
@@ -869,6 +884,11 @@ void OpenGLPixelImageCubeBit::setSize(int width, int height, int count)
     }
 }
 
+void OpenGLPixelImageCubeBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = ndSize.x;
+}
+
 void OpenGLPixelImageCubeBit::loadDataToGPU(const GpuFormatInfo &storage,
                                               std::span<const LoadInfo> load)
 {
@@ -891,6 +911,12 @@ void OpenGLPixelImage1DLayeredBit::setSize(int width, int height, int count)
     m_layerCount = count;
 }
 
+void OpenGLPixelImage1DLayeredBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = ndSize.x;
+    m_layerCount = ndSize.y;
+}
+
 void OpenGLPixelImage1DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
                                                    std::span<const LoadInfo> load)
 {
@@ -907,6 +933,12 @@ void OpenGLPixelImage2DLayeredBit::setSize(int width, int height, int count)
 {
     m_size = {width, height};
     m_layerCount = count;
+}
+
+void OpenGLPixelImage2DLayeredBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = {ndSize.x, ndSize.y};
+    m_layerCount = ndSize.z;
 }
 
 void OpenGLPixelImage2DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
@@ -931,6 +963,12 @@ void OpenGLPixelImageCubeLayeredBit::setSize(int width, int height, int count)
         throw std::runtime_error("2D layered texture must have multiple of 6 images");
     }
     m_layerCount = count / 6;
+}
+
+void OpenGLPixelImageCubeLayeredBit::setSize(glm::uvec4 ndSize)
+{
+    m_size = ndSize.x;
+    m_layerCount = ndSize.y;
 }
 
 void OpenGLPixelImageCubeLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,

@@ -302,8 +302,8 @@ class OpenGLPixelImageCube : public dynasma::PtrAwareBase,
                          const TextureCubemap<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr)
     {
-        setupEmpty({params.size, params.size, 6, 0}, params.storageFormat,
-                   promotePadVector(params.swizzle), params.filtering, params.friendlyName);
+        setupEmpty({params.size, 0, 0, 0}, params.storageFormat, promotePadVector(params.swizzle),
+                   params.filtering, params.friendlyName);
     }
     OpenGLPixelImageCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                          const TextureCubemap<TPIXEL_TYPE>::PureColorParams &params)
@@ -455,7 +455,7 @@ class OpenGLPixelImageCubeLayered : public dynasma::PtrAwareBase,
                                 const TextureCubemapLayered<TPIXEL_TYPE>::EmptyParams &params)
         : dynasma::PtrAwareBase(p_ctr)
     {
-        setupEmpty({params.size.x, params.size.x, 6, params.size.y}, params.storageFormat,
+        setupEmpty({params.size.x, params.size.y, 0, 0}, params.storageFormat,
                    promotePadVector(params.swizzle), params.filtering, params.friendlyName);
     }
     OpenGLPixelImageCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
