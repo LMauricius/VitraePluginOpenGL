@@ -1,6 +1,7 @@
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
 #include "VitraePluginOpenGL/Bits/Naming.hpp"
+#include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Snippet.hpp"
 #include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
@@ -84,14 +85,21 @@ OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexBuff
     registerTypeConversion(TYPE_INFO< glm::mat4x3>, {.glTypeSpec = mat4x3Spec,                                                                                .setUniform = [](GLint location, const Variant &hostValue) {                                                      glUniformMatrix4x3fv(location, 1, GL_FALSE, &hostValue.get<glm::mat4x3>()[0][0]          );}});
     // clang-format on
 
-    registerTypeConversion(TYPE_INFO<dynasma::FirmPtr<Texture>>,
-                           {.glTypeSpec = sampler2DSpec,
-                            .setOpaqueBinding = [](int bindingIndex, const Variant &hostValue) {
-                                auto p_tex = hostValue.get<dynasma::FirmPtr<Texture>>();
-                                OpenGLTexture &tex = static_cast<OpenGLTexture &>(*p_tex);
-                                glActiveTexture(GL_TEXTURE0 + bindingIndex);
-                                glBindTexture(GL_TEXTURE_2D, tex.glTextureId);
-                            }});
+    forTextureTypes([&]<class TextureT>() {
+        registerTypeConversion(
+            TYPE_INFO<dynasma::FirmPtr<TextureT>>,
+            {
+                .glTypeSpec = sampler2DSpec,
+                .setOpaqueBinding =
+                    [](int bindingIndex, const Variant &hostValue) {
+                        auto p_tex = hostValue.get<dynasma::FirmPtr<TextureT>>();
+                        auto &img = *p_tex->getBuffer();
+                        glActiveTexture(GL_TEXTURE0 + bindingIndex);
+                        glBindTexture(OpenGLTextureInfo<TextureT>::TEXTURE_TARGET,
+                                      dynamic_cast<OpenGLPixelImageBit &>(img).glTextureId);
+                    },
+            });
+    });
 
     /*
     Mesh vertex buffers for standard components
@@ -368,7 +376,7 @@ void OpenGLRenderer::specifyVertexBuffer(const ParamSpec &newElSpec)
     m_vertexBufferSpecs.emplace(StringId(newElSpec.name), &glTypeSpec);
 }
 
-void OpenGLRenderer::specifyTextureSampler(StringView colorName)
+void OpenGLRenderer::specifyTextureSampler(StringView colorName, const TypeInfo &texturePtrInfo)
 {
     StringId id = StringId(colorName);
     if (m_specifiedColorNames.find(id) == m_specifiedColorNames.end()) {
@@ -378,7 +386,7 @@ void OpenGLRenderer::specifyTextureSampler(StringView colorName)
             m_root.getComponent<ShaderSnippetKeeper>().new_asset_k<ShaderSnippet::StringParams>({
                 .inputSpecs =
                     {
-                        {"tex_" + std::string(colorName), TYPE_INFO<dynasma::FirmPtr<Texture>>},
+                        {"tex_" + std::string(colorName), texturePtrInfo},
                         {"coord_" + std::string(colorName), TYPE_INFO<glm::vec3>},
                     },
                 .outputSpecs =

@@ -20,7 +20,6 @@
 namespace Vitrae
 {
 class Mesh;
-class Texture;
 class RawSharedBuffer;
 class ComposeTask;
 
@@ -124,7 +123,7 @@ class OpenGLRenderer : public Renderer
     const GLConversionSpec &getTypeConversion(const TypeInfo &hostType);
 
     void specifyVertexBuffer(const ParamSpec &newElSpec) override;
-    void specifyTextureSampler(StringView colorName) override;
+    void specifyTextureSampler(StringView colorName, const TypeInfo &texturePtrInfo) override;
 
     std::size_t getNumVertexBuffers() const;
     std::size_t getVertexBufferLayoutIndex(StringId name) const;

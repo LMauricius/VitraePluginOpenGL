@@ -351,4 +351,43 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
     dynasma::FirmPtr<BufferT> p_buffer;
 };
 
+// ==== Texture info ===============================================================================
+
+template <class TextureT> struct OpenGLTextureInfo;
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture1D<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_1D;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture2D<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_2D;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture3D<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_3D;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<TextureCubemap<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_CUBE_MAP;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture1DLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_1D_ARRAY;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture2DLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_2D_ARRAY;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<TextureCubemapLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_CUBE_MAP_ARRAY;
+};
+
 } // namespace Vitrae

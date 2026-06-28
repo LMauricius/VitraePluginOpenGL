@@ -1,8 +1,11 @@
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
+#include "Vitrae/Assets/PixelImage.hpp"
+#include "Vitrae/Assets/Texture.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Data/Overloaded.hpp"
 #include "Vitrae/Params/ParamList.hpp"
 #include "Vitrae/Params/Standard.hpp"
+#include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
@@ -37,16 +40,17 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
     int width = 0, height = 0;
 
     for (const auto &texSpec : params.renderTextureSpecs) {
-        if (texSpec.p_texture == dynasma::FirmPtr<Texture2DBase>{}) {
+        if (texSpec.p_texture == dynasma::PinPtr<Texture2DBase>{}) {
             continue;
         }
 
-        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture);
+        auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
+            texSpec.p_texture->getBufferBase());
 
         if (width == 0 && height == 0) {
-            width = p_texture->getSize().x;
-            height = p_texture->getSize().y;
-        } else if (width != p_texture->getSize().x || height != p_texture->getSize().y) {
+            width = p_teximage->getSizeBit().x;
+            height = p_teximage->getSizeBit().y;
+        } else if (width != p_teximage->getSizeBit().x || height != p_teximage->getSizeBit().y) {
             throw std::runtime_error("All textures must be the same size");
         }
 
@@ -75,7 +79,7 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
                    },
                    texSpec.shaderComponent);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, p_texture->glTextureId,
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, p_teximage->glTextureId,
                                0);
     }
 
@@ -103,16 +107,10 @@ OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
     glfwSetWindowTitle(window, params.title.c_str());
 
     // 'empty' textures just for clearing and stuff
-    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
-        .p_texture = std::nullopt,
-        .shaderComponent = StandardParam::fragment_color,
-        .clearColor = params.clearColor,
-    });
-    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
-        .p_texture = std::nullopt,
-        .shaderComponent = FixedRenderComponent::Depth,
-        .clearColor = params.clearDepth,
-    });
+    m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
+        dynasma::PinPtr<Texture2DBase>{}, StandardParam::fragment_color, params.clearColor));
+    m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
+        dynasma::PinPtr<Texture2DBase>{}, FixedRenderComponent::DEPTH, params.clearDepth));
 
     // setup members
     mp_renderComponents = dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
@@ -163,24 +161,24 @@ void OpenGLFrameStore::resize(glm::vec2 size)
     /// TODO: resize capabilities
 }
 
-void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
+void OpenGLFrameStore::bindOutput(const RenderTextureSpec &texSpec)
 {
-    m_outputTextureSpecs.push_back(texSpec);
+    m_renderTextureSpecs.push_back(texSpec);
 
     std::visit(
         Overloaded{
             [&](FramebufferContextSwitcher &contextSwitcher) {
                 glBindFramebuffer(GL_FRAMEBUFFER, contextSwitcher.glFramebufferId);
 
-                if (!texSpec.p_texture.has_value()) {
+                if (!texSpec.p_texture) {
                     return;
                 }
 
-                auto p_texture =
-                    dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
+                auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
+                    texSpec.p_texture->getBufferBase());
 
-                if (contextSwitcher.width != p_texture->getSize().x ||
-                    contextSwitcher.height != p_texture->getSize().y) {
+                if (contextSwitcher.width != p_teximage->getSizeBit().x ||
+                    contextSwitcher.height != p_teximage->getSizeBit().y) {
                     throw std::runtime_error("All bound textures must be the same size");
                 }
 
@@ -204,7 +202,7 @@ void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
                            texSpec.shaderComponent);
 
                 glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D,
-                                       p_texture->glTextureId, 0);
+                                       p_teximage->glTextureId, 0);
 
                 // re-setup outputs
                 mp_renderComponents =
@@ -234,9 +232,9 @@ dynasma::FirmPtr<const ParamList> OpenGLFrameStore::getRenderComponents() const
     return mp_renderComponents;
 }
 
-std::span<const FrameStore::OutputTextureSpec> OpenGLFrameStore::getRenderTextureSpecs() const
+std::span<const RenderTextureSpec> OpenGLFrameStore::getRenderTextureSpecs() const
 {
-    return m_outputTextureSpecs;
+    return m_renderTextureSpecs;
 }
 
 void OpenGLFrameStore::sync(bool vsync)
