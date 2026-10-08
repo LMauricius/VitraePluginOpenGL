@@ -74,7 +74,8 @@ class OpenGLPixelImageBit
     // void loadFiltering(const GpuFormatInfo &formatInfo, const TextureFilteringParams &filtering);
     virtual void setSize(int width, int height, int count) = 0;
     virtual void setSize(glm::uvec4 ndSize) = 0;
-    virtual void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) = 0;
+    virtual void setupStorageOnGPU(const GpuFormatInfo &storage) = 0;
+    virtual void loadDataToGPU(std::span<const LoadInfo> load) = 0;
 
   private:
 };
@@ -99,7 +100,8 @@ class OpenGLPixelImage1DBit : public OpenGLPixelImageBit
     unsigned int getSizeBit() const { return m_size; }
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     unsigned int m_size;
 };
@@ -112,7 +114,8 @@ class OpenGLPixelImage2DBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     glm::uvec2 m_size;
 };
@@ -125,7 +128,8 @@ class OpenGLPixelImage3DBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     glm::uvec3 m_size;
 };
@@ -138,7 +142,8 @@ class OpenGLPixelImageCubeBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     unsigned int m_size;
 };
@@ -151,7 +156,8 @@ class OpenGLPixelImage1DLayeredBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     unsigned int m_size;
     unsigned int m_layerCount;
@@ -165,7 +171,8 @@ class OpenGLPixelImage2DLayeredBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     glm::uvec2 m_size;
     unsigned int m_layerCount;
@@ -179,7 +186,8 @@ class OpenGLPixelImageCubeLayeredBit : public OpenGLPixelImageBit
   protected:
     void setSize(int width, int height, int count) override;
     void setSize(glm::uvec4 ndSize) override;
-    void loadDataToGPU(const GpuFormatInfo &storage, std::span<const LoadInfo> load) override;
+    void setupStorageOnGPU(const GpuFormatInfo &storage) override;
+    void loadDataToGPU(std::span<const LoadInfo> load) override;
 
     unsigned int m_size;
     unsigned int m_layerCount;

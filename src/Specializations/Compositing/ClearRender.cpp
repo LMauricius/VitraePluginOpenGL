@@ -154,7 +154,8 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
                                                   case FixedClearColor::Default:
                                                       // default is black
                                                       glClearBufferfv(GL_COLOR, attachmentIndex,
-                                                                      (const GLfloat[]){0.0f, 0.0f, 0.0f, 0.0f});
+                                                                      (const GLfloat[]){
+                                                                          0.0f, 0.0f, 0.0f, 0.0f});
                                                       break;
                                                   }
                                               },

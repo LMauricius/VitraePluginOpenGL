@@ -144,7 +144,7 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
     ParamAliases combinedAliases(p_aliaseses);
 
     // Compile and setup the shader
-    dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader;
+    std::optional<dynasma::FirmPtr<CompiledGLSLShader>> op_compiledShader;
     GLint glModelMatrixUniformLocation;
     GLint glMVPMatrixUniformLocation;
     GLint glDisplayMatrixUniformLocation;
@@ -156,9 +156,11 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
         {
             MMETER_SCOPE_PROFILER("Shader loading");
 
-            p_compiledShader = shaderCacher.retrieve_asset({CompiledGLSLShader::SurfaceShaderParams(
-                combinedAliases, m_params.rasterizing.vertexPositionOutputPropertyName,
-                *frame.getRenderComponents(), m_root)});
+            op_compiledShader =
+                shaderCacher.retrieve_asset({CompiledGLSLShader::SurfaceShaderParams(
+                    combinedAliases, m_params.rasterizing.vertexPositionOutputPropertyName,
+                    *frame.getRenderComponents(), m_root)});
+            dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader = *op_compiledShader;
 
             // Aliases should've already been taken into account, so use properties directly
             VariantScope &directProperties = args.properties.getUnaliasedScope();
@@ -194,6 +196,7 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
 
             glUseProgram(p_compiledShader->programGLName);
         }
+        dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader = *op_compiledShader;
 
         // Aliases should've already been taken into account, so use properties directly
         VariantScope &directProperties = args.properties.getUnaliasedScope();
@@ -204,6 +207,8 @@ void OpenGLComposeDataRender::run(RenderComposeContext args) const
             p_compiledShader->setupProperties(rend, directProperties, *p_mat);
         }
     }
+    dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader = *op_compiledShader;
+
     {
         MMETER_SCOPE_PROFILER("Shape loading");
 

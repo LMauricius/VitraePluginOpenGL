@@ -144,20 +144,21 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
             }
 
             // get the method
-            dynasma::FirmPtr<const Method<ShaderTask>> p_method;
-            switch (p_helper->p_compSpec->shaderType) {
-            case GL_VERTEX_SHADER:
-                p_method = root.getComponent<MethodCollection>().getVertexMethod();
-                break;
-            case GL_FRAGMENT_SHADER:
-                p_method = root.getComponent<MethodCollection>().getFragmentMethod();
-                break;
-            case GL_COMPUTE_SHADER:
-                p_method = root.getComponent<MethodCollection>().getComputeMethod();
-                break;
-            default:
-                assert(false);
-            }
+            dynasma::FirmPtr<const Method<ShaderTask>> p_method = [&] {
+                switch (p_helper->p_compSpec->shaderType) {
+                case GL_VERTEX_SHADER:
+                    return root.getComponent<MethodCollection>().getVertexMethod();
+                    break;
+                case GL_FRAGMENT_SHADER:
+                    return root.getComponent<MethodCollection>().getFragmentMethod();
+                    break;
+                case GL_COMPUTE_SHADER:
+                    return root.getComponent<MethodCollection>().getComputeMethod();
+                    break;
+                default:
+                    assert(false);
+                }
+            }();
 
             try {
                 p_helper->pipeline =

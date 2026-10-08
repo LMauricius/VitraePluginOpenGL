@@ -13,23 +13,24 @@
 
 #include "dynasma/pointer.hpp"
 #include "dynasma/standalone.hpp"
+#include <optional>
 
 namespace
 {
 
-static const GLenum drawBufferConstantsOrdered[] = {
+constexpr GLenum drawBufferConstantsOrdered[] = {
     GL_COLOR_ATTACHMENT0,  GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2,  GL_COLOR_ATTACHMENT3,
     GL_COLOR_ATTACHMENT4,  GL_COLOR_ATTACHMENT5,  GL_COLOR_ATTACHMENT6,  GL_COLOR_ATTACHMENT7,
     GL_COLOR_ATTACHMENT8,  GL_COLOR_ATTACHMENT9,  GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
     GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
 };
-
 }
 
 namespace Vitrae
 {
 OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
-    : m_renderTextureSpecs(params.renderTextureSpecs), m_colorAttachmentUnusedIndex(0)
+    : m_renderTextureSpecs(params.renderTextureSpecs), m_colorAttachmentUnusedIndex(0),
+      mp_renderComponents{dynasma::makeStandalone<ParamList>()}
 {
 
     GLuint glFramebufferId;
@@ -40,12 +41,12 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
     int width = 0, height = 0;
 
     for (const auto &texSpec : params.renderTextureSpecs) {
-        if (texSpec.p_texture == dynasma::PinPtr<Texture2DBase>{}) {
+        if (!texSpec.np_texture.has_value()) {
             continue;
         }
 
         auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
-            texSpec.p_texture->getBufferBase());
+            texSpec.np_texture.value()->getImageBase());
 
         if (width == 0 && height == 0) {
             width = p_teximage->getSizeBit().x;
@@ -96,7 +97,9 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
 }
 
 OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
-    : m_colorAttachmentUnusedIndex(0)
+    : m_colorAttachmentUnusedIndex(0),
+      mp_renderComponents{dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
+          {{StandardParam::fragment_color}})}
 {
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(params.root.getComponent<Renderer>());
 
@@ -108,13 +111,11 @@ OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
 
     // 'empty' textures just for clearing and stuff
     m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
-        dynasma::PinPtr<Texture2DBase>{}, StandardParam::fragment_color, params.clearColor));
+        std::nullopt, StandardParam::fragment_color, params.clearColor));
     m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
-        dynasma::PinPtr<Texture2DBase>{}, FixedRenderComponent::DEPTH, params.clearDepth));
+        std::nullopt, FixedRenderComponent::DEPTH, params.clearDepth));
 
     // setup members
-    mp_renderComponents = dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
-        {{StandardParam::fragment_color}});
     m_contextSwitcher = WindowContextSwitcher{window, params.onClose, params.onDrag};
 
     // register callbacks
@@ -170,12 +171,12 @@ void OpenGLFrameStore::bindOutput(const RenderTextureSpec &texSpec)
             [&](FramebufferContextSwitcher &contextSwitcher) {
                 glBindFramebuffer(GL_FRAMEBUFFER, contextSwitcher.glFramebufferId);
 
-                if (!texSpec.p_texture) {
+                if (!texSpec.np_texture) {
                     return;
                 }
 
                 auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
-                    texSpec.p_texture->getBufferBase());
+                    texSpec.np_texture.value()->getImageBase());
 
                 if (contextSwitcher.width != p_teximage->getSizeBit().x ||
                     contextSwitcher.height != p_teximage->getSizeBit().y) {

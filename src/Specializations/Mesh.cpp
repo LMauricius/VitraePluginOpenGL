@@ -15,22 +15,20 @@
 namespace Vitrae
 {
 OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
-    : m_root(params.root), m_sentToGPU(false), m_aabb{{}, {}}
+    : m_root(params.root), m_frontSideOrientation{FrontSideOrientation::CounterClockwise},
+      m_aabb{{}, {}},
+      m_indexBuffer{
+          makeBuffer<void, Triangle>(params.root,
+                                     BufferUsageHint::HOST_INIT | BufferUsageHint::GPU_DRAW,
+                                     params.p_extMesh->mNumFaces),
+      },
+      m_sentToGPU(false)
 {
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(params.root.getComponent<Renderer>());
     AssimpConvCollection &conv = params.root.getComponent<AssimpConvCollection>();
 
-    // properties
-    m_frontSideOrientation = FrontSideOrientation::CounterClockwise;
-
-    // prepare vertices
-    m_indexBuffer = makeBuffer<void, Triangle>(
-        params.root, BufferUsageHint::HOST_INIT | BufferUsageHint::GPU_DRAW,
-        params.p_extMesh->mNumFaces);
-
-    auto cpuTriangles = m_indexBuffer.getMutableElements();
-
     // load triangles
+    auto cpuTriangles = m_indexBuffer.getMutableElements();
     if (params.p_extMesh->HasFaces()) {
         for (int i = 0; i < params.p_extMesh->mNumFaces; i++) {
             if (params.p_extMesh->mFaces[i].mNumIndices == 3) {
@@ -62,7 +60,7 @@ OpenGLMesh::OpenGLMesh(const AssimpLoadParams &params)
                     SharedBufferPtr<void, glmType> p_buffer = makeBuffer<void, glmType>(
                         params.root, BufferUsageHint::HOST_INIT | BufferUsageHint::GPU_DRAW,
                         params.p_extMesh->mNumVertices);
-                    m_vertexComponentBuffers[info.name] = p_buffer;
+                    m_vertexComponentBuffers.emplace(info.name, p_buffer);
 
                     std::span<glmType> cpuBuffer = p_buffer.getMutableElements();
 
@@ -131,7 +129,7 @@ void OpenGLMesh::prepareComponents(const ParamList &components)
                 auto newComponentBuffers = generator(m_root, *this);
 
                 for (auto [name, p_buffer] : newComponentBuffers) {
-                    m_vertexComponentBuffers[name] = p_buffer;
+                    m_vertexComponentBuffers.insert_or_assign(name, p_buffer);
                 }
             }
         }

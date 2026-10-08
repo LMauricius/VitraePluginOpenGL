@@ -125,6 +125,8 @@ class OpenGLRenderer : public Renderer
     void specifyVertexBuffer(const ParamSpec &newElSpec) override;
     void specifyTextureSampler(StringView colorName, const TypeInfo &texturePtrInfo) override;
 
+    dynasma::FirmPtr<Material> getDefaultMaterial() const override;
+
     std::size_t getNumVertexBuffers() const;
     std::size_t getVertexBufferLayoutIndex(StringId name) const;
     const StableMap<StringId, const GLTypeSpec *> &getAllVertexBufferSpecs() const;
@@ -135,6 +137,8 @@ class OpenGLRenderer : public Renderer
     std::thread::id m_mainThreadId;
     std::mutex m_contextMutex;
     GLFWwindow *mp_mainWindow;
+
+    std::optional<dynasma::FirmPtr<Material>> mnp_defaultMaterial;
 
     std::deque<GLTypeSpec> m_glTypes;
     std::deque<GLConversionSpec> m_glConversions;

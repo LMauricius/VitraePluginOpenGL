@@ -289,7 +289,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
             ret.internalFormat = GL_R16;
             break;
         case GL_UNSIGNED_BYTE:
-            ret.internalFormat = GL_RED;
+            ret.internalFormat = GL_R8;
             break;
         default:
             ret.internalFormat = GL_INVALID_ENUM;
@@ -310,7 +310,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_R16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RED;
+                ret.internalFormat = GL_R8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -329,7 +329,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_RG16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RG;
+                ret.internalFormat = GL_RG8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -352,7 +352,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_R16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RED;
+                ret.internalFormat = GL_R8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -370,7 +370,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_RGB16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RGB;
+                ret.internalFormat = GL_RGB8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -396,7 +396,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_R16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RED;
+                ret.internalFormat = GL_R8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -415,7 +415,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_RG16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RG;
+                ret.internalFormat = GL_RG8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -434,7 +434,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_RGB16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RGB;
+                ret.internalFormat = GL_RGB8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -452,7 +452,7 @@ GpuFormatInfo getGpuFormatInfo(PixelType internalType, int stbChannelFormat, GLe
                 ret.internalFormat = GL_RGBA16;
                 break;
             case GL_UNSIGNED_BYTE:
-                ret.internalFormat = GL_RGBA;
+                ret.internalFormat = GL_RGBA8;
                 break;
             default:
                 ret.internalFormat = GL_INVALID_ENUM;
@@ -601,7 +601,6 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
 {
     GLint glMagFilter, glMinFilter, glWrapS, glWrapT;
     bool mUseMipMaps;
-    glm::vec4 borderColor;
 
     if (std::holds_alternative<WrappingType>(filtering.horWrap)) {
         switch (std::get<WrappingType>(filtering.horWrap)) {
@@ -675,7 +674,8 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
     }
 
     if (std::holds_alternative<glm::vec4>(filtering.borderColor)) {
-        borderColor = std::get<glm::vec4>(filtering.borderColor);
+        glTextureParameterfv(glTextureId, GL_TEXTURE_BORDER_COLOR,
+                             &std::get<glm::vec4>(filtering.borderColor)[0]);
     }
 
     if (formatInfo.useSwizzle) {
@@ -686,7 +686,6 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
     glTextureParameteri(glTextureId, GL_TEXTURE_MIN_FILTER, glMinFilter);
     glTextureParameteri(glTextureId, GL_TEXTURE_WRAP_S, glWrapS);
     glTextureParameteri(glTextureId, GL_TEXTURE_WRAP_T, glWrapT);
-    glTextureParameterfv(glTextureId, GL_TEXTURE_BORDER_COLOR, &borderColor[0]);
 }
 
 } // namespace
@@ -707,7 +706,7 @@ void OpenGLPixelImageBit::setupFromFile(PixelType pixelType,
                                           const ImageCommon::FileLoadParams &params)
 {
     m_sentToGPU = true;
-    glGenTextures(1, &glTextureId);
+    glCreateTextures(GL_TEXTURE_2D, 1, &glTextureId);
 
     int stbChannelFormat, width, height;
     LoadInfo load[] = {
@@ -717,9 +716,10 @@ void OpenGLPixelImageBit::setupFromFile(PixelType pixelType,
     GpuFormatInfo storageInfo =
         getGpuFormatInfo(pixelType, stbChannelFormat, load[0].metaData.type);
 
-    loadFiltering(glTextureId, storageInfo, params.filtering);
     setSize(width, height, 1);
-    loadDataToGPU(storageInfo, load);
+    setupStorageOnGPU(storageInfo);
+    loadDataToGPU(load);
+    loadFiltering(glTextureId, storageInfo, params.filtering);
 
     stbi_image_free(load[0].pixelData);
 
@@ -737,7 +737,7 @@ void OpenGLPixelImageBit::setupFromFile(PixelType pixelType,
 void OpenGLPixelImageBit::setupFromColor(AnyPixelFormat pixelFormat, const void *pixelData)
 {
     m_sentToGPU = true;
-    glGenTextures(1, &glTextureId);
+    glCreateTextures(GL_TEXTURE_2D, 1, &glTextureId);
 
     PixelType pixelType = static_cast<PixelType>(pixelFormat.index());
 
@@ -760,7 +760,8 @@ void OpenGLPixelImageBit::setupFromColor(AnyPixelFormat pixelFormat, const void 
     glTextureParameteri(glTextureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     setSize(1, 1, 1);
-    loadDataToGPU(storageInfo, load);
+    setupStorageOnGPU(storageInfo);
+    loadDataToGPU(load);
 
     /// TODO: color name
     String glLabel = String("color ") + std::to_string((std::size_t)this);
@@ -774,13 +775,13 @@ void OpenGLPixelImageBit::setupEmpty(const glm::uvec4 &ndSize, AnyPixelFormat pi
                                        const TextureFilteringParams &filtering, String friendlyName)
 {
     m_sentToGPU = false;
-    glGenTextures(1, &glTextureId);
+    glCreateTextures(GL_TEXTURE_2D, 1, &glTextureId);
 
     GpuFormatInfo storageInfo = getGpuFormatInfo(pixelFormat, swizzleSpec);
 
     loadFiltering(glTextureId, storageInfo, filtering);
     setSize(ndSize);
-    loadDataToGPU(storageInfo, {});
+    setupStorageOnGPU(storageInfo);
 
     String glLabel = String("empty ") + friendlyName;
     glBindTexture(GL_TEXTURE_2D, glTextureId);
@@ -808,14 +809,17 @@ void OpenGLPixelImage1DBit::setSize(glm::uvec4 ndSize)
     m_size = ndSize.x;
 }
 
-void OpenGLPixelImage1DBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                            std::span<const LoadInfo> load)
+void OpenGLPixelImage1DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+{
+    glTextureStorage1D(glTextureId, 1, storage.internalFormat, m_size);
+}
+
+void OpenGLPixelImage1DBit::loadDataToGPU(std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
         throw std::runtime_error(
             "OpenGLPixelImage1DBit::loadDataToGPU: number of buffers must be 1");
     }
-    glTextureStorage1D(glTextureId, 1, storage.internalFormat, m_size);
     glTextureSubImage1D(glTextureId, 0, 0, m_size, load[0].metaData.format, load[0].metaData.type,
                         load[0].pixelData);
 }
@@ -835,14 +839,17 @@ void OpenGLPixelImage2DBit::setSize(glm::uvec4 ndSize)
     m_size = {ndSize.x, ndSize.y};
 }
 
-void OpenGLPixelImage2DBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                            std::span<const LoadInfo> load)
+void OpenGLPixelImage2DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+{
+    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y);
+}
+
+void OpenGLPixelImage2DBit::loadDataToGPU(std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
         throw std::runtime_error(
             "OpenGLPixelImage2DBit::loadDataToGPU: number of buffers must be 1");
     }
-    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y);
     glTextureSubImage2D(glTextureId, 0, 0, 0, m_size.x, m_size.y, load[0].metaData.format,
                         load[0].metaData.type, load[0].pixelData);
 }
@@ -859,14 +866,17 @@ void OpenGLPixelImage3DBit::setSize(glm::uvec4 ndSize)
     m_size = {ndSize.x, ndSize.y, ndSize.z};
 }
 
-void OpenGLPixelImage3DBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                            std::span<const LoadInfo> load)
+void OpenGLPixelImage3DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+{
+    glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_size.z);
+}
+
+void OpenGLPixelImage3DBit::loadDataToGPU(std::span<const LoadInfo> load)
 {
     if (load.size() != 1) {
         throw std::runtime_error(
             "OpenGLPixelImage3DBit::loadDataToGPU: number of buffers must be 1");
     }
-    glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_size.z);
     glTextureSubImage3D(glTextureId, 0, 0, 0, 0, m_size.x, m_size.y, m_size.z,
                         load[0].metaData.format, load[0].metaData.type, load[0].pixelData);
 }
@@ -889,14 +899,17 @@ void OpenGLPixelImageCubeBit::setSize(glm::uvec4 ndSize)
     m_size = ndSize.x;
 }
 
-void OpenGLPixelImageCubeBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                              std::span<const LoadInfo> load)
+void OpenGLPixelImageCubeBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+{
+    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_size);
+}
+
+void OpenGLPixelImageCubeBit::loadDataToGPU(std::span<const LoadInfo> load)
 {
     if (load.size() != 6) {
         throw std::runtime_error(
             "OpenGLPixelImageCubeBit::loadDataToGPU: number of buffers must be 6");
     }
-    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_size);
     for (int i = 1; i < 6; i++) {
         glTextureSubImage3D(glTextureId, 0, 0, 0, i, m_size, m_size, 1, load[i].metaData.format,
                             load[i].metaData.type, load[i].pixelData);
@@ -917,10 +930,13 @@ void OpenGLPixelImage1DLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.y;
 }
 
-void OpenGLPixelImage1DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                                   std::span<const LoadInfo> load)
+void OpenGLPixelImage1DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
 {
     glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_layerCount);
+}
+
+void OpenGLPixelImage1DLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
+{
     for (int i = 0; i < m_layerCount; i++) {
         glTextureSubImage2D(glTextureId, 0, 0, i, m_size, 1, load[i].metaData.format,
                             load[i].metaData.type, load[i].pixelData);
@@ -941,10 +957,13 @@ void OpenGLPixelImage2DLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.z;
 }
 
-void OpenGLPixelImage2DLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                                   std::span<const LoadInfo> load)
+void OpenGLPixelImage2DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
 {
     glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_layerCount);
+}
+
+void OpenGLPixelImage2DLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
+{
     for (int i = 0; i < m_layerCount; i++) {
         glTextureSubImage3D(glTextureId, 0, 0, 0, i, m_size.x, m_size.y, 1, load[i].metaData.format,
                             load[i].metaData.type, load[i].pixelData);
@@ -971,10 +990,13 @@ void OpenGLPixelImageCubeLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.y;
 }
 
-void OpenGLPixelImageCubeLayeredBit::loadDataToGPU(const GpuFormatInfo &storage,
-                                                     std::span<const LoadInfo> load)
+void OpenGLPixelImageCubeLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
 {
     glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size, m_size, m_layerCount * 6);
+}
+
+void OpenGLPixelImageCubeLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
+{
     for (int i = 0; i < m_layerCount * 6; i++) {
         glTextureSubImage3D(glTextureId, 0, 0, 0, i, m_size, m_size, 1, load[i].metaData.format,
                             load[i].metaData.type, load[i].pixelData);

@@ -220,8 +220,8 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
 
             // render the scene
             // iterate over shaders
-            dynasma::FirmPtr<const Material> p_currentMaterial;
-            dynasma::FirmPtr<CompiledGLSLShader> p_currentShader;
+            std::optional<dynasma::FirmPtr<const Material>> np_currentMaterial;
+            std::optional<dynasma::FirmPtr<CompiledGLSLShader>> np_currentShader;
             std::size_t currentShaderHash = 0;
             GLint glModelMatrixUniformLocation;
             GLint glMVPMatrixUniformLocation;
@@ -229,7 +229,6 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
 
             for (auto p_modelProp : sortedModelProps) {
                 // Setup the shape to render
-                dynasma::FirmPtr<Shape> p_shape;
                 glm::mat4 mat_model;
                 glm::mat4 mat_mvp;
                 {
@@ -237,7 +236,8 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                     mat_model = p_modelProp->transform.getModelMatrix();
                     mat_mvp = mat_display * mat_model;
                 }
-                {
+
+                dynasma::FirmPtr<Shape> p_shape = [&] {
                     MMETER_SCOPE_PROFILER("LoD selection");
 
                     constexpr glm::vec4 sizedPoint = {1.0, 1.0, 1.0, 1.0};
@@ -251,31 +251,32 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                         .closestPointScaling = std::max(visiblePointSize.x, visiblePointSize.y),
                     };
 
-                    p_shape = p_modelProp->p_model->getBestForm(purposeId, lodParams, lodCtx);
-                }
+                    return p_modelProp->p_model->getBestForm(purposeId, lodParams, lodCtx);
+                }();
 
                 dynasma::FirmPtr<const Material> p_nextMaterial =
                     p_modelProp->p_model->getMaterial();
 
-                if (p_nextMaterial != p_currentMaterial) {
+                if (p_nextMaterial != np_currentMaterial) {
                     MMETER_SCOPE_PROFILER("Material iteration");
 
-                    p_currentMaterial = p_nextMaterial;
+                    np_currentMaterial = p_nextMaterial;
 
-                    if (p_currentMaterial->getParamAliases().hash() != currentShaderHash) {
+                    if (np_currentMaterial.value()->getParamAliases().hash() != currentShaderHash) {
                         MMETER_SCOPE_PROFILER("Shader change");
 
                         {
                             MMETER_SCOPE_PROFILER("Shader loading");
 
-                            currentShaderHash = p_currentMaterial->getParamAliases().hash();
+                            currentShaderHash =
+                                np_currentMaterial.value()->getParamAliases().hash();
 
                             const ParamAliases *p_aliaseses[] = {
-                                &p_currentMaterial->getParamAliases(), &args.aliases};
+                                &np_currentMaterial.value()->getParamAliases(), &args.aliases};
 
                             ParamAliases aliases(p_aliaseses);
 
-                            p_currentShader = shaderCacher.retrieve_asset(
+                            np_currentShader = shaderCacher.retrieve_asset(
                                 {CompiledGLSLShader::SurfaceShaderParams(
                                     aliases, m_params.rasterizing.vertexPositionOutputPropertyName,
                                     *frame.getRenderComponents(), m_root)});
@@ -285,15 +286,15 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                             using ListConvPair = std::pair<const ParamList *, ParamList *>;
 
                             for (auto [p_specs, p_targetSpecs] :
-                                 {ListConvPair{&p_currentShader->inputSpecs,
+                                 {ListConvPair{&(*np_currentShader)->inputSpecs,
                                                &specsContainer.inputSpecs},
-                                  ListConvPair{&p_currentShader->filterSpecs,
+                                  ListConvPair{&(*np_currentShader)->filterSpecs,
                                                &specsContainer.filterSpecs},
-                                  ListConvPair{&p_currentShader->consumingSpecs,
+                                  ListConvPair{&(*np_currentShader)->consumingSpecs,
                                                &specsContainer.consumingSpecs}}) {
                                 for (auto [nameId, spec] : p_specs->getMappedSpecs()) {
-                                    if (p_currentMaterial->getProperties().find(nameId) ==
-                                            p_currentMaterial->getProperties().end() &&
+                                    if (np_currentMaterial.value()->getProperties().find(nameId) ==
+                                            np_currentMaterial.value()->getProperties().end() &&
                                         nameId != StandardParam::mat_model.name &&
                                         nameId != StandardParam::mat_display.name &&
                                         nameId != StandardParam::mat_mvp.name &&
@@ -310,7 +311,7 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                             MMETER_SCOPE_PROFILER("Shader setup");
 
                             // OpenGL - use the program
-                            glUseProgram(p_currentShader->programGLName);
+                            glUseProgram((*np_currentShader)->programGLName);
 
                             // Aliases should've already been taken into account, so use
                             // properties directly
@@ -318,35 +319,36 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
 
                             // set the 'environmental' uniforms
                             // skip those that will be set by the material
-                            if (auto it = p_currentShader->uniformSpecs.find(
-                                    StandardParam::mat_model.name);
-                                it != p_currentShader->uniformSpecs.end()) {
+                            if (auto it = (*np_currentShader)
+                                              ->uniformSpecs.find(StandardParam::mat_model.name);
+                                it != (*np_currentShader)->uniformSpecs.end()) {
                                 glModelMatrixUniformLocation = (*it).second.location;
                             } else {
                                 glModelMatrixUniformLocation = -1;
                             }
-                            if (auto it = p_currentShader->uniformSpecs.find(
-                                    StandardParam::mat_display.name);
-                                it != p_currentShader->uniformSpecs.end()) {
+                            if (auto it = (*np_currentShader)
+                                              ->uniformSpecs.find(StandardParam::mat_display.name);
+                                it != (*np_currentShader)->uniformSpecs.end()) {
                                 glDisplayMatrixUniformLocation = (*it).second.location;
                             } else {
                                 glDisplayMatrixUniformLocation = -1;
                             }
-                            if (auto it =
-                                    p_currentShader->uniformSpecs.find(StandardParam::mat_mvp.name);
-                                it != p_currentShader->uniformSpecs.end()) {
+                            if (auto it = (*np_currentShader)
+                                              ->uniformSpecs.find(StandardParam::mat_mvp.name);
+                                it != (*np_currentShader)->uniformSpecs.end()) {
                                 glMVPMatrixUniformLocation = (*it).second.location;
                             } else {
                                 glMVPMatrixUniformLocation = -1;
                             }
 
-                            p_currentShader->setupNonMaterialProperties(rend, directProperties,
-                                                                        *p_currentMaterial);
+                            (*np_currentShader)
+                                ->setupNonMaterialProperties(rend, directProperties,
+                                                             **np_currentMaterial);
                         }
                     }
 
                     if (!needsRebuild) {
-                        p_currentShader->setupMaterialProperties(rend, *p_currentMaterial);
+                        (*np_currentShader)->setupMaterialProperties(rend, **np_currentMaterial);
                     }
                 }
 
@@ -354,7 +356,7 @@ void OpenGLComposeSceneRender::run(RenderComposeContext args) const
                 {
                     MMETER_SCOPE_PROFILER("Shape loading");
 
-                    p_shape->prepareComponents(p_currentShader->vertexComponentSpecs);
+                    p_shape->prepareComponents((*np_currentShader)->vertexComponentSpecs);
                     p_shape->loadToGPU(rend);
                 }
 

@@ -1,5 +1,6 @@
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
+#include "Vitrae/Dynamic/TypeInfo.hpp"
 #include "VitraePluginOpenGL/Bits/Naming.hpp"
 #include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Snippet.hpp"
@@ -15,6 +16,7 @@
 #include "Vitrae/Dynamic/TypeMeta/Vector.hpp"
 #include "Vitrae/Params/Standard.hpp"
 
+#include "dynasma/standalone.hpp"
 #include "glad/glad.h"
 // must be after glad.h
 #include "GLFW/glfw3.h"
@@ -93,7 +95,7 @@ OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexBuff
                 .setOpaqueBinding =
                     [](int bindingIndex, const Variant &hostValue) {
                         auto p_tex = hostValue.get<dynasma::FirmPtr<TextureT>>();
-                        auto &img = *p_tex->getBuffer();
+                        auto &img = *p_tex->getImage();
                         glActiveTexture(GL_TEXTURE0 + bindingIndex);
                         glBindTexture(OpenGLTextureInfo<TextureT>::TEXTURE_TARGET,
                                       dynamic_cast<OpenGLPixelImageBit &>(img).glTextureId);
@@ -107,6 +109,15 @@ OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexBuff
     specifyVertexBuffer({.name = StandardParam::position.name, .typeInfo = TYPE_INFO<glm::vec3>});
     specifyVertexBuffer({.name = StandardParam::normal.name, .typeInfo = TYPE_INFO<glm::vec3>});
     specifyVertexBuffer({.name = StandardParam::coord_base.name, .typeInfo = TYPE_INFO<glm::vec3>});
+
+    /*
+    Default values
+    */
+    mnp_defaultMaterial = dynasma::makeStandalone<Material>(Material::SetupParams{
+        .root = m_root,
+        .aliases = {},
+        .properties = {},
+    });
 }
 
 OpenGLRenderer::~OpenGLRenderer() {}
@@ -218,16 +229,15 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
     auto p_vector_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
     auto p_dependent_meta = dynamic_cast<const DependentMeta *>(p_meta);
 
-    GLTypeSpec typeSpec = GLTypeSpec{
+    GLTypeSpec typeSpec{
         .valueTypeName = "",
         .opaqueTypeName = "",
         .structBodySnippet = "",
-        .layout =
-            GLLayoutSpec{
-                .std140Size = 0,
-                .std140Alignment = 0,
-                .indexSize = 0,
-            },
+        .layout{
+            .std140Size = 0,
+            .std140Alignment = 0,
+            .indexSize = 0,
+        },
     };
 
     // Add dependencies
@@ -424,6 +434,11 @@ void OpenGLRenderer::setRawBufferBinding(const RawSharedBuffer &buf, int binding
     }
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, glbuf.getGlBufferHandle());
+}
+
+dynasma::FirmPtr<Material> OpenGLRenderer::getDefaultMaterial() const
+{
+    return *mnp_defaultMaterial;
 }
 
 } // namespace Vitrae
