@@ -600,7 +600,7 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
                    const TextureFilteringParams &filtering)
 {
     GLint glMagFilter, glMinFilter, glWrapS, glWrapT;
-    bool mUseMipMaps;
+    bool useMipMaps;
 
     if (std::holds_alternative<WrappingType>(filtering.horWrap)) {
         switch (std::get<WrappingType>(filtering.horWrap)) {
@@ -653,8 +653,46 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
         glMagFilter = GL_NEAREST;
     }
 
-    if (std::holds_alternative<bool>(filtering.useMipMaps)) {
-        mUseMipMaps = std::get<bool>(filtering.useMipMaps);
+    if (std::holds_alternative<bool>(filtering.useMipMaps) &&
+        std::holds_alternative<FilterType>(filtering.mipmapFilter)) {
+        useMipMaps = std::get<bool>(filtering.useMipMaps);
+
+        if (std::holds_alternative<FilterType>(filtering.minFilter)) {
+            switch (std::get<FilterType>(filtering.minFilter)) {
+            case FilterType::LINEAR:
+                switch (std::get<FilterType>(filtering.mipmapFilter)) {
+                case FilterType::LINEAR:
+                    glMinFilter = GL_LINEAR_MIPMAP_LINEAR;
+                    break;
+                case FilterType::NEAREST:
+                    glMinFilter = GL_LINEAR_MIPMAP_NEAREST;
+                    break;
+                }
+                break;
+            case FilterType::NEAREST:
+                switch (std::get<FilterType>(filtering.minFilter)) {
+                case FilterType::LINEAR:
+                    glMinFilter = GL_NEAREST_MIPMAP_LINEAR;
+                    break;
+                case FilterType::NEAREST:
+                    glMinFilter = GL_NEAREST_MIPMAP_NEAREST;
+                    break;
+                }
+                break;
+            }
+
+        } else {
+            switch (std::get<FilterType>(filtering.mipmapFilter)) {
+            case FilterType::LINEAR:
+                glMinFilter = GL_NEAREST_MIPMAP_LINEAR;
+                break;
+            case FilterType::NEAREST:
+                glMinFilter = GL_NEAREST_MIPMAP_NEAREST;
+                break;
+            }
+        }
+    } else {
+        useMipMaps = false;
 
         if (std::holds_alternative<FilterType>(filtering.minFilter)) {
             switch (std::get<FilterType>(filtering.minFilter)) {
@@ -668,9 +706,6 @@ void loadFiltering(GLint glTextureId, const GpuFormatInfo &formatInfo,
         } else {
             glMinFilter = GL_NEAREST;
         }
-    } else {
-        mUseMipMaps = false;
-        glMinFilter = GL_NEAREST;
     }
 
     if (std::holds_alternative<glm::vec4>(filtering.borderColor)) {
@@ -716,17 +751,20 @@ void OpenGLPixelImageBit::setupFromFile(PixelType pixelType,
     GpuFormatInfo storageInfo =
         getGpuFormatInfo(pixelType, stbChannelFormat, load[0].metaData.type);
 
+    bool useMipmaps = std::holds_alternative<bool>(params.filtering.useMipMaps) &&
+                      std::get<bool>(params.filtering.useMipMaps);
+
     setSize(width, height, 1);
-    setupStorageOnGPU(storageInfo);
+    setupStorageOnGPU(storageInfo, useMipmaps);
     loadDataToGPU(load);
+
+    if (useMipmaps) {
+        glGenerateTextureMipmap(glTextureId);
+    }
+
     loadFiltering(glTextureId, storageInfo, params.filtering);
 
     stbi_image_free(load[0].pixelData);
-
-    if (std::holds_alternative<bool>(params.filtering.useMipMaps) &&
-        std::get<bool>(params.filtering.useMipMaps)) {
-        glGenerateTextureMipmap(glTextureId);
-    }
 
     String glLabel = String("texture ") + params.filepath.c_str();
     glBindTexture(GL_TEXTURE_2D, glTextureId);
@@ -760,7 +798,7 @@ void OpenGLPixelImageBit::setupFromColor(AnyPixelFormat pixelFormat, const void 
     glTextureParameteri(glTextureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     setSize(1, 1, 1);
-    setupStorageOnGPU(storageInfo);
+    setupStorageOnGPU(storageInfo, false);
     loadDataToGPU(load);
 
     /// TODO: color name
@@ -781,7 +819,7 @@ void OpenGLPixelImageBit::setupEmpty(const glm::uvec4 &ndSize, AnyPixelFormat pi
 
     loadFiltering(glTextureId, storageInfo, filtering);
     setSize(ndSize);
-    setupStorageOnGPU(storageInfo);
+    setupStorageOnGPU(storageInfo, false);
 
     String glLabel = String("empty ") + friendlyName;
     glBindTexture(GL_TEXTURE_2D, glTextureId);
@@ -809,9 +847,10 @@ void OpenGLPixelImage1DBit::setSize(glm::uvec4 ndSize)
     m_size = ndSize.x;
 }
 
-void OpenGLPixelImage1DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImage1DBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage1D(glTextureId, 1, storage.internalFormat, m_size);
+    glTextureStorage1D(glTextureId, useMipmaps ? (1 + floor(log2(m_size))) : 1,
+                       storage.internalFormat, m_size);
 }
 
 void OpenGLPixelImage1DBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -839,9 +878,11 @@ void OpenGLPixelImage2DBit::setSize(glm::uvec4 ndSize)
     m_size = {ndSize.x, ndSize.y};
 }
 
-void OpenGLPixelImage2DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImage2DBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y);
+    glTextureStorage2D(glTextureId,
+                       useMipmaps ? (1 + floor(log2(std::max(m_size.x, m_size.y)))) : 1,
+                       storage.internalFormat, m_size.x, m_size.y);
 }
 
 void OpenGLPixelImage2DBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -866,9 +907,12 @@ void OpenGLPixelImage3DBit::setSize(glm::uvec4 ndSize)
     m_size = {ndSize.x, ndSize.y, ndSize.z};
 }
 
-void OpenGLPixelImage3DBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImage3DBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_size.z);
+    glTextureStorage3D(
+        glTextureId,
+        useMipmaps ? (1 + floor(log2(std::max(m_size.x, std::max(m_size.y, m_size.z))))) : 1,
+        storage.internalFormat, m_size.x, m_size.y, m_size.z);
 }
 
 void OpenGLPixelImage3DBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -899,9 +943,10 @@ void OpenGLPixelImageCubeBit::setSize(glm::uvec4 ndSize)
     m_size = ndSize.x;
 }
 
-void OpenGLPixelImageCubeBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImageCubeBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_size);
+    glTextureStorage2D(glTextureId, useMipmaps ? (1 + floor(log2(m_size))) : 1,
+                       storage.internalFormat, m_size, m_size);
 }
 
 void OpenGLPixelImageCubeBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -930,9 +975,10 @@ void OpenGLPixelImage1DLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.y;
 }
 
-void OpenGLPixelImage1DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImage1DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage2D(glTextureId, 1, storage.internalFormat, m_size, m_layerCount);
+    glTextureStorage2D(glTextureId, useMipmaps ? (1 + floor(log2(m_size))) : 1,
+                       storage.internalFormat, m_size, m_layerCount);
 }
 
 void OpenGLPixelImage1DLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -957,9 +1003,11 @@ void OpenGLPixelImage2DLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.z;
 }
 
-void OpenGLPixelImage2DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImage2DLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage, bool useMipmaps)
 {
-    glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size.x, m_size.y, m_layerCount);
+    glTextureStorage3D(glTextureId,
+                       useMipmaps ? (1 + floor(log2(std::max(m_size.x, m_size.y)))) : 1,
+                       storage.internalFormat, m_size.x, m_size.y, m_layerCount);
 }
 
 void OpenGLPixelImage2DLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
@@ -990,9 +1038,11 @@ void OpenGLPixelImageCubeLayeredBit::setSize(glm::uvec4 ndSize)
     m_layerCount = ndSize.y;
 }
 
-void OpenGLPixelImageCubeLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage)
+void OpenGLPixelImageCubeLayeredBit::setupStorageOnGPU(const GpuFormatInfo &storage,
+                                                       bool useMipmaps)
 {
-    glTextureStorage3D(glTextureId, 1, storage.internalFormat, m_size, m_size, m_layerCount * 6);
+    glTextureStorage3D(glTextureId, useMipmaps ? (1 + floor(log2(m_size))) : 1,
+                       storage.internalFormat, m_size, m_size, m_layerCount * 6);
 }
 
 void OpenGLPixelImageCubeLayeredBit::loadDataToGPU(std::span<const LoadInfo> load)
