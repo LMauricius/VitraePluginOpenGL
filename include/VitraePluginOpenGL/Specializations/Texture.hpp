@@ -15,19 +15,19 @@ template <PixelType TPIXEL_TYPE>
 class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImage1D<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImage1D<TPIXEL_TYPE>;
 
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture1D<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -49,26 +49,26 @@ class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TPIXEL_TY
 
     dynasma::PinPtr<const PixelImage1D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
 class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImage2D<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImage2D<TPIXEL_TYPE>;
 
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture2D<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -90,26 +90,26 @@ class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TPIXEL_TY
 
     dynasma::PinPtr<const PixelImage2D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
 class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImage3D<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImage3D<TPIXEL_TYPE>;
 
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
                     const Texture3D<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -131,26 +131,26 @@ class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TPIXEL_TY
 
     dynasma::PinPtr<const PixelImage3D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
 class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImageCube<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImageCube<TPIXEL_TYPE>;
 
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
                       const TextureCubemap<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -185,26 +185,26 @@ class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TP
         return p_buffer;
     }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
 class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImage1DLayered<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImage1DLayered<TPIXEL_TYPE>;
 
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture1DLayered<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -239,26 +239,26 @@ class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLay
         return p_buffer;
     }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
 class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImage2DLayered<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImage2DLayered<TPIXEL_TYPE>;
 
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                            const Texture2DLayered<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -293,7 +293,7 @@ class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLay
         return p_buffer;
     }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 template <PixelType TPIXEL_TYPE>
@@ -301,19 +301,19 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
                                  public TextureCubemapLayered<TPIXEL_TYPE>
 {
   public:
-    using BufferT = OpenGLPixelImageCubeLayered<TPIXEL_TYPE>;
+    using ImageT = OpenGLPixelImageCubeLayered<TPIXEL_TYPE>;
 
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TPIXEL_TYPE>::FileLoadParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TPIXEL_TYPE>::EmptyParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
     OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
                              const TextureCubemapLayered<TPIXEL_TYPE>::PureColorParams &params)
-        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<BufferT>(params)}
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
     {}
 
     // ---- For dynasma ----------------------------------------
@@ -348,7 +348,7 @@ class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
         return p_buffer;
     }
 
-    dynasma::FirmPtr<BufferT> p_buffer;
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
 // ==== Texture info ===============================================================================

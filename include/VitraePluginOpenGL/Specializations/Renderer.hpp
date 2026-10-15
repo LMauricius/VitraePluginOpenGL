@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vitrae/Assets/BufferUtil/Ptr.hpp"
+#include "Vitrae/Assets/ImageUtil/Ptr.hpp"
 #include "Vitrae/Data/StringId.hpp"
 #include "Vitrae/Renderer.hpp"
 
@@ -20,7 +20,7 @@
 namespace Vitrae
 {
 class Mesh;
-class RawSharedBuffer;
+class BinaryImage;
 class ComposeTask;
 
 struct GLLayoutSpec
@@ -122,14 +122,14 @@ class OpenGLRenderer : public Renderer
                                                    GLConversionSpec &&newSpec);
     const GLConversionSpec &getTypeConversion(const TypeInfo &hostType);
 
-    void specifyVertexBuffer(const ParamSpec &newElSpec) override;
+    void specifyVertexPuller(const ParamSpec &newElSpec) override;
     void specifyTextureSampler(StringView colorName, const TypeInfo &texturePtrInfo) override;
 
     dynasma::FirmPtr<Material> getDefaultMaterial() const override;
 
-    std::size_t getNumVertexBuffers() const;
-    std::size_t getVertexBufferLayoutIndex(StringId name) const;
-    const StableMap<StringId, const GLTypeSpec *> &getAllVertexBufferSpecs() const;
+    std::size_t getNumVertexSpecs() const;
+    std::size_t getVertexLayoutIndex(StringId name) const;
+    const StableMap<StringId, const GLTypeSpec *> &getAllVertexSpecs() const;
 
   protected:
     ComponentRoot &m_root;
@@ -144,16 +144,13 @@ class OpenGLRenderer : public Renderer
     std::deque<GLConversionSpec> m_glConversions;
     StableMap<std::type_index, GLConversionSpec *> m_glConversionsByHostType;
 
-    StableMap<StringId, std::size_t> m_vertexBufferIndices;
-    std::size_t m_vertexBufferFreeIndex;
-    StableMap<StringId, const GLTypeSpec *> m_vertexBufferSpecs;
+    StableMap<StringId, std::size_t> m_vertexLayoutIndices;
+    std::size_t m_vertexLayoutFreeIndex;
+    StableMap<StringId, const GLTypeSpec *> m_vertexSpecs;
 
     std::unordered_set<StringId> m_specifiedColorNames;
 
     mutable StableMap<std::size_t, StableMap<StringId, ParamSpec>> m_sceneRenderInputDependencies;
-
-    // utility
-    static void setRawBufferBinding(const RawSharedBuffer &buf, int bindingIndex);
 };
 
 } // namespace Vitrae

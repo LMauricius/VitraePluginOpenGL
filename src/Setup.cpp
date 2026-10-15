@@ -5,6 +5,7 @@
 #include "Vitrae/Data/PixelTyping.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
+#include "VitraePluginOpenGL/Specializations/BinaryImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/ClearRender.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/Compute.hpp"
 #include "VitraePluginOpenGL/Specializations/Compositing/DataRender.hpp"
@@ -17,7 +18,6 @@
 #include "VitraePluginOpenGL/Specializations/Shading/FunctionCall.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Header.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Snippet.hpp"
-#include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
 #include "dynasma/cachers/basic.hpp"
@@ -39,7 +39,7 @@ void setup(Vitrae::ComponentRoot &root)
     root.setComponent<              MeshKeeper>(new dynasma::NaiveKeeper <              MeshKeeperSeed, std::allocator<              OpenGLMesh>>());
     root.setComponent<          MaterialKeeper>(new dynasma::NaiveKeeper <          MaterialKeeperSeed, std::allocator<                Material>>());
     root.setComponent<       FrameStoreManager>(new dynasma::BasicManager<              FrameStoreSeed, std::allocator<        OpenGLFrameStore>>());
-    root.setComponent<   RawSharedBufferKeeper>(new dynasma::NaiveKeeper <   RawSharedBufferKeeperSeed, std::allocator<   OpenGLRawSharedBuffer>>());
+    root.setComponent<       BinaryImageKeeper>(new dynasma::NaiveKeeper <       BinaryImageKeeperSeed, std::allocator<       OpenGLBinaryImage>>());
     root.setComponent<    ShaderConstantKeeper>(new dynasma::NaiveKeeper <    ShaderConstantKeeperSeed, std::allocator<    OpenGLShaderConstant>>());
     root.setComponent<     ShaderSnippetKeeper>(new dynasma::NaiveKeeper <     ShaderSnippetKeeperSeed, std::allocator<     OpenGLShaderSnippet>>());
     root.setComponent<ShaderFunctionCallKeeper>(new dynasma::NaiveKeeper <ShaderFunctionCallKeeperSeed, std::allocator<OpenGLShaderFunctionCall>>());

@@ -262,13 +262,12 @@ CompiledGLSLShader::CompiledGLSLShader(MovableSpan<CompilationSpec> compilationS
                 if (spec.typeInfo == TYPE_INFO<void>) {
                     // just a token, skip
                 } else if (p_helper->p_compSpec->shaderType == GL_VERTEX_SHADER &&
-                           rend.getAllVertexBufferSpecs().find(nameId) !=
-                               rend.getAllVertexBufferSpecs().end()) {
+                           rend.getAllVertexSpecs().find(nameId) !=
+                               rend.getAllVertexSpecs().end()) {
                     // vertex shader receives inputs from the mesh
                     prevStageOutputs.emplace(
-                        nameId,
-                        LocationSpec{.srcSpec = spec,
-                                     .location = (int)rend.getVertexBufferLayoutIndex(nameId)});
+                        nameId, LocationSpec{.srcSpec = spec,
+                                             .location = (int)rend.getVertexLayoutIndex(nameId)});
                     this->vertexComponentSpecs.insert_back(spec);
                 } else {
                     // decide how to convert it
