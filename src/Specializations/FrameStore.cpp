@@ -1,31 +1,36 @@
 #include "VitraePluginOpenGL/Specializations/FrameStore.hpp"
+#include "Vitrae/Assets/PixelImage.hpp"
+#include "Vitrae/Assets/Texture.hpp"
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Data/Overloaded.hpp"
 #include "Vitrae/Params/ParamList.hpp"
 #include "Vitrae/Params/Standard.hpp"
+#include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
 #include "MMeter.h"
 
+#include "dynasma/pointer.hpp"
 #include "dynasma/standalone.hpp"
+#include <optional>
 
 namespace
 {
 
-static const GLenum drawBufferConstantsOrdered[] = {
+constexpr GLenum drawBufferConstantsOrdered[] = {
     GL_COLOR_ATTACHMENT0,  GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2,  GL_COLOR_ATTACHMENT3,
     GL_COLOR_ATTACHMENT4,  GL_COLOR_ATTACHMENT5,  GL_COLOR_ATTACHMENT6,  GL_COLOR_ATTACHMENT7,
     GL_COLOR_ATTACHMENT8,  GL_COLOR_ATTACHMENT9,  GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
     GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
 };
-
 }
 
 namespace Vitrae
 {
 OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
-    : m_outputTextureSpecs(params.outputTextureSpecs), m_colorAttachmentUnusedIndex(0)
+    : m_renderTextureSpecs(params.renderTextureSpecs), m_colorAttachmentUnusedIndex(0),
+      mp_renderComponents{dynasma::makeStandalone<ParamList>()}
 {
 
     GLuint glFramebufferId;
@@ -35,17 +40,18 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
 
     int width = 0, height = 0;
 
-    for (const auto &texSpec : params.outputTextureSpecs) {
-        if (!texSpec.p_texture.has_value()) {
+    for (const auto &texSpec : params.renderTextureSpecs) {
+        if (!texSpec.np_texture.has_value()) {
             continue;
         }
 
-        auto p_texture = dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
+        auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
+            texSpec.np_texture.value()->getImageBase());
 
         if (width == 0 && height == 0) {
-            width = p_texture->getSize().x;
-            height = p_texture->getSize().y;
-        } else if (width != p_texture->getSize().x || height != p_texture->getSize().y) {
+            width = p_teximage->getSizeBit().x;
+            height = p_teximage->getSizeBit().y;
+        } else if (width != p_teximage->getSizeBit().x || height != p_teximage->getSizeBit().y) {
             throw std::runtime_error("All textures must be the same size");
         }
 
@@ -53,8 +59,14 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
         std::visit(Overloaded{
                        [&](const FixedRenderComponent &comp) {
                            switch (comp) {
-                           case FixedRenderComponent::Depth:
+                           case FixedRenderComponent::DEPTH:
                                attachment = GL_DEPTH_ATTACHMENT;
+                               break;
+                           case FixedRenderComponent::STENCIL:
+                               attachment = GL_STENCIL_ATTACHMENT;
+                               break;
+                           case FixedRenderComponent::DEPTH_AND_STENCIL:
+                               attachment = GL_DEPTH_STENCIL_ATTACHMENT;
                                break;
                            }
                        },
@@ -68,7 +80,7 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
                    },
                    texSpec.shaderComponent);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, p_texture->glTextureId,
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, p_teximage->glTextureId,
                                0);
     }
 
@@ -85,7 +97,9 @@ OpenGLFrameStore::OpenGLFrameStore(const FrameStore::TextureBindParams &params)
 }
 
 OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
-    : m_colorAttachmentUnusedIndex(0)
+    : m_colorAttachmentUnusedIndex(0),
+      mp_renderComponents{dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
+          {{StandardParam::fragment_color}})}
 {
     OpenGLRenderer &rend = static_cast<OpenGLRenderer &>(params.root.getComponent<Renderer>());
 
@@ -96,20 +110,12 @@ OpenGLFrameStore::OpenGLFrameStore(const WindowDisplayParams &params)
     glfwSetWindowTitle(window, params.title.c_str());
 
     // 'empty' textures just for clearing and stuff
-    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
-        .p_texture = std::nullopt,
-        .shaderComponent = StandardParam::fragment_color,
-        .clearColor = params.clearColor,
-    });
-    m_outputTextureSpecs.emplace_back(OutputTextureSpec{
-        .p_texture = std::nullopt,
-        .shaderComponent = FixedRenderComponent::Depth,
-        .clearColor = params.clearDepth,
-    });
+    m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
+        std::nullopt, StandardParam::fragment_color, params.clearColor));
+    m_renderTextureSpecs.emplace_back(RenderTextureSpec::fromUnsafe(
+        std::nullopt, FixedRenderComponent::DEPTH, params.clearDepth));
 
     // setup members
-    mp_renderComponents = dynasma::makeStandalone<ParamList, std::span<const Vitrae::ParamSpec>>(
-        {{StandardParam::fragment_color}});
     m_contextSwitcher = WindowContextSwitcher{window, params.onClose, params.onDrag};
 
     // register callbacks
@@ -156,24 +162,24 @@ void OpenGLFrameStore::resize(glm::vec2 size)
     /// TODO: resize capabilities
 }
 
-void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
+void OpenGLFrameStore::bindOutput(const RenderTextureSpec &texSpec)
 {
-    m_outputTextureSpecs.push_back(texSpec);
+    m_renderTextureSpecs.push_back(texSpec);
 
     std::visit(
         Overloaded{
             [&](FramebufferContextSwitcher &contextSwitcher) {
                 glBindFramebuffer(GL_FRAMEBUFFER, contextSwitcher.glFramebufferId);
 
-                if (!texSpec.p_texture.has_value()) {
+                if (!texSpec.np_texture) {
                     return;
                 }
 
-                auto p_texture =
-                    dynasma::dynamic_pointer_cast<OpenGLTexture>(texSpec.p_texture.value());
+                auto p_teximage = dynasma::dynamic_pointer_cast<OpenGLPixelImage2DBit>(
+                    texSpec.np_texture.value()->getImageBase());
 
-                if (contextSwitcher.width != p_texture->getSize().x ||
-                    contextSwitcher.height != p_texture->getSize().y) {
+                if (contextSwitcher.width != p_teximage->getSizeBit().x ||
+                    contextSwitcher.height != p_teximage->getSizeBit().y) {
                     throw std::runtime_error("All bound textures must be the same size");
                 }
 
@@ -181,7 +187,7 @@ void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
                 std::visit(Overloaded{
                                [&](const FixedRenderComponent &comp) {
                                    switch (comp) {
-                                   case FixedRenderComponent::Depth:
+                                   case FixedRenderComponent::DEPTH:
                                        attachment = GL_DEPTH_ATTACHMENT;
                                        break;
                                    }
@@ -197,7 +203,7 @@ void OpenGLFrameStore::bindOutput(const OutputTextureSpec &texSpec)
                            texSpec.shaderComponent);
 
                 glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D,
-                                       p_texture->glTextureId, 0);
+                                       p_teximage->glTextureId, 0);
 
                 // re-setup outputs
                 mp_renderComponents =
@@ -227,9 +233,9 @@ dynasma::FirmPtr<const ParamList> OpenGLFrameStore::getRenderComponents() const
     return mp_renderComponents;
 }
 
-std::span<const FrameStore::OutputTextureSpec> OpenGLFrameStore::getOutputTextureSpecs() const
+std::span<const RenderTextureSpec> OpenGLFrameStore::getRenderTextureSpecs() const
 {
-    return m_outputTextureSpecs;
+    return m_renderTextureSpecs;
 }
 
 void OpenGLFrameStore::sync(bool vsync)

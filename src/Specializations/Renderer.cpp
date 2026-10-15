@@ -1,26 +1,41 @@
 #include "VitraePluginOpenGL/Specializations/Renderer.hpp"
 
+#include "Vitrae/Dynamic/TypeInfo.hpp"
 #include "VitraePluginOpenGL/Bits/Naming.hpp"
+#include "VitraePluginOpenGL/Specializations/BinaryImage.hpp"
+#include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
 #include "VitraePluginOpenGL/Specializations/Shading/Snippet.hpp"
-#include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
 #include "VitraePluginOpenGL/Specializations/Texture.hpp"
 
 #include "Vitrae/Collections/ComponentRoot.hpp"
 #include "Vitrae/Collections/MethodCollection.hpp"
-#include "Vitrae/Dynamic/TypeMeta/BufferPtr.hpp"
 #include "Vitrae/Dynamic/TypeMeta/Dependent.hpp"
 #include "Vitrae/Dynamic/TypeMeta/GLSLStruct.hpp"
+#include "Vitrae/Dynamic/TypeMeta/ImagePtr.hpp"
 #include "Vitrae/Dynamic/TypeMeta/STD140Layout.hpp"
 #include "Vitrae/Dynamic/TypeMeta/Vector.hpp"
 #include "Vitrae/Params/Standard.hpp"
 
+#include "dynasma/standalone.hpp"
 #include "glad/glad.h"
 // must be after glad.h
 #include "GLFW/glfw3.h"
 
 namespace Vitrae
 {
-OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexBufferFreeIndex(0)
+
+static void setBinaryImageBinding(const BinaryImage &buf, int bindingIndex)
+{
+    const OpenGLBinaryImage &glbuf = static_cast<const OpenGLBinaryImage &>(buf);
+
+    if (!glbuf.isSynchronized()) {
+        throw std::runtime_error("OpenGLBinaryImage is not synchronized");
+    }
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, glbuf.getGlBufferHandle());
+}
+
+OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexLayoutFreeIndex(0)
 {
     /*
     Standard GLSL ypes
@@ -84,21 +99,37 @@ OpenGLRenderer::OpenGLRenderer(ComponentRoot &root) : m_root(root), m_vertexBuff
     registerTypeConversion(TYPE_INFO< glm::mat4x3>, {.glTypeSpec = mat4x3Spec,                                                                                .setUniform = [](GLint location, const Variant &hostValue) {                                                      glUniformMatrix4x3fv(location, 1, GL_FALSE, &hostValue.get<glm::mat4x3>()[0][0]          );}});
     // clang-format on
 
-    registerTypeConversion(TYPE_INFO<dynasma::FirmPtr<Texture>>,
-                           {.glTypeSpec = sampler2DSpec,
-                            .setOpaqueBinding = [](int bindingIndex, const Variant &hostValue) {
-                                auto p_tex = hostValue.get<dynasma::FirmPtr<Texture>>();
-                                OpenGLTexture &tex = static_cast<OpenGLTexture &>(*p_tex);
-                                glActiveTexture(GL_TEXTURE0 + bindingIndex);
-                                glBindTexture(GL_TEXTURE_2D, tex.glTextureId);
-                            }});
+    forTextureTypes([&]<class TextureT>() {
+        registerTypeConversion(
+            TYPE_INFO<dynasma::FirmPtr<TextureT>>,
+            {
+                .glTypeSpec = sampler2DSpec,
+                .setOpaqueBinding =
+                    [](int bindingIndex, const Variant &hostValue) {
+                        auto p_tex = hostValue.get<dynasma::FirmPtr<TextureT>>();
+                        auto &img = *p_tex->getImage();
+                        glActiveTexture(GL_TEXTURE0 + bindingIndex);
+                        glBindTexture(OpenGLTextureInfo<TextureT>::TEXTURE_TARGET,
+                                      dynamic_cast<OpenGLPixelImageBit &>(img).glTextureId);
+                    },
+            });
+    });
 
     /*
     Mesh vertex buffers for standard components
     */
-    specifyVertexBuffer({.name = StandardParam::position.name, .typeInfo = TYPE_INFO<glm::vec3>});
-    specifyVertexBuffer({.name = StandardParam::normal.name, .typeInfo = TYPE_INFO<glm::vec3>});
-    specifyVertexBuffer({.name = StandardParam::coord_base.name, .typeInfo = TYPE_INFO<glm::vec3>});
+    specifyVertexPuller({.name = StandardParam::position.name, .typeInfo = TYPE_INFO<glm::vec3>});
+    specifyVertexPuller({.name = StandardParam::normal.name, .typeInfo = TYPE_INFO<glm::vec3>});
+    specifyVertexPuller({.name = StandardParam::coord_base.name, .typeInfo = TYPE_INFO<glm::vec3>});
+
+    /*
+    Default values
+    */
+    mnp_defaultMaterial = dynasma::makeStandalone<Material>(Material::SetupParams{
+        .root = m_root,
+        .aliases = {},
+        .properties = {},
+    });
 }
 
 OpenGLRenderer::~OpenGLRenderer() {}
@@ -204,22 +235,21 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
 {
     const PolymorphicTypeMeta *p_meta = &hostType.metaDetail;
 
-    auto p_bufferptr_meta = dynamic_cast<const BufferPtrMeta *>(p_meta);
+    auto p_imageptr_meta = dynamic_cast<const ImagePtrMeta *>(p_meta);
     auto p_layout_meta = dynamic_cast<const STD140LayoutMeta *>(p_meta);
     auto p_struct_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
     auto p_vector_meta = dynamic_cast<const GLSLStructMeta *>(p_meta);
     auto p_dependent_meta = dynamic_cast<const DependentMeta *>(p_meta);
 
-    GLTypeSpec typeSpec = GLTypeSpec{
+    GLTypeSpec typeSpec{
         .valueTypeName = "",
         .opaqueTypeName = "",
         .structBodySnippet = "",
-        .layout =
-            GLLayoutSpec{
-                .std140Size = 0,
-                .std140Alignment = 0,
-                .indexSize = 0,
-            },
+        .layout{
+            .std140Size = 0,
+            .std140Alignment = 0,
+            .indexSize = 0,
+        },
     };
 
     // Add dependencies
@@ -231,11 +261,11 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
     }
 
     // For buffer ptr types
-    if (p_bufferptr_meta) {
+    if (p_imageptr_meta) {
         // Register type
 
-        if (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void>) {
-            auto &headerConv = getTypeConversion(p_bufferptr_meta->headerTypeInfo);
+        if (p_imageptr_meta->headerTypeInfo != TYPE_INFO<void>) {
+            auto &headerConv = getTypeConversion(p_imageptr_meta->headerTypeInfo);
             auto &headerGlTypeSpec = headerConv.glTypeSpec;
 
             if (!headerGlTypeSpec.structBodySnippet.empty()) {
@@ -247,22 +277,22 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
                     "No struct body snippet or value type name for the header");
             }
 
-            if (headerGlTypeSpec.layout.std140Size != p_bufferptr_meta->headerTypeInfo.size) {
+            if (headerGlTypeSpec.layout.std140Size != p_imageptr_meta->headerTypeInfo.size) {
                 throw GLSpecificationError(
-                    "Buffer headers not trivially convertible between host and GLSL types");
+                    "StructImage headers not trivially convertible between host and GLSL types");
             }
 
             typeSpec.memberTypeDependencies.push_back(&headerGlTypeSpec);
         }
 
-        if (p_bufferptr_meta->elementTypeInfo != TYPE_INFO<void>) {
-            auto &elementConv = getTypeConversion(p_bufferptr_meta->elementTypeInfo);
+        if (p_imageptr_meta->elementTypeInfo != TYPE_INFO<void>) {
+            auto &elementConv = getTypeConversion(p_imageptr_meta->elementTypeInfo);
             auto &elementGlTypeSpec = elementConv.glTypeSpec;
 
             typeSpec.flexibleMemberSpec.emplace(GLTypeSpec::FlexibleMemberSpec{
                 .elementGlTypeSpec = elementGlTypeSpec,
                 .memberName =
-                    (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void>) ? "elements" : "",
+                    (p_imageptr_meta->headerTypeInfo != TYPE_INFO<void>) ? "elements" : "",
                 .maxNumElements = std::numeric_limits<std::uint32_t>::max(),
             });
 
@@ -275,16 +305,16 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
                     elementGlTypeSpec.layout.std140Alignment;
             }
 
-            if (p_bufferptr_meta->headerTypeInfo != TYPE_INFO<void> &&
-                p_bufferptr_meta->headerTypeInfo.size !=
-                    BufferLayoutInfo::getFirstElementOffset(p_bufferptr_meta->headerTypeInfo,
-                                                            p_bufferptr_meta->elementTypeInfo)) {
-                throw GLSpecificationError("Buffer elements do not start at the same offset "
+            if (p_imageptr_meta->headerTypeInfo != TYPE_INFO<void> &&
+                p_imageptr_meta->headerTypeInfo.size !=
+                    MemoryLayoutInfo::getFirstElementOffset(p_imageptr_meta->headerTypeInfo,
+                                                            p_imageptr_meta->elementTypeInfo)) {
+                throw GLSpecificationError("StructImage elements do not start at the same offset "
                                            "between host and GLSL types");
             }
-            if (elementGlTypeSpec.layout.std140Size != p_bufferptr_meta->elementTypeInfo.size) {
+            if (elementGlTypeSpec.layout.std140Size != p_imageptr_meta->elementTypeInfo.size) {
                 throw GLSpecificationError(
-                    "Buffer elements not trivially convertible between host and GLSL types");
+                    "StructImage elements not trivially convertible between host and GLSL types");
             }
 
             typeSpec.memberTypeDependencies.push_back(&elementGlTypeSpec);
@@ -300,8 +330,9 @@ void OpenGLRenderer::registerTypeAuto(const TypeInfo &hostType)
                 .setUniform = nullptr,
                 .setOpaqueBinding = nullptr,
                 .setUBOBinding = nullptr,
-                .setSSBOBinding = [p_bufferptr_meta](int bindingIndex, const Variant &hostValue) {
-                    setRawBufferBinding(*p_bufferptr_meta->getRawBuffer(hostValue), bindingIndex);
+                .setSSBOBinding = [p_imageptr_meta](int bindingIndex, const Variant &hostValue) {
+                    setBinaryImageBinding(*p_imageptr_meta->getBinaryImage(hostValue),
+                                          bindingIndex);
                 }});
     }
     // For struct types
@@ -359,16 +390,16 @@ const GLConversionSpec &OpenGLRenderer::getTypeConversion(const TypeInfo &type)
     }
 }
 
-void OpenGLRenderer::specifyVertexBuffer(const ParamSpec &newElSpec)
+void OpenGLRenderer::specifyVertexPuller(const ParamSpec &newElSpec)
 {
     const GLTypeSpec &glTypeSpec = getTypeConversion(newElSpec.typeInfo).glTypeSpec;
 
-    m_vertexBufferIndices.emplace(StringId(newElSpec.name), m_vertexBufferFreeIndex);
-    m_vertexBufferFreeIndex += glTypeSpec.layout.indexSize;
-    m_vertexBufferSpecs.emplace(StringId(newElSpec.name), &glTypeSpec);
+    m_vertexLayoutIndices.emplace(StringId(newElSpec.name), m_vertexLayoutFreeIndex);
+    m_vertexLayoutFreeIndex += glTypeSpec.layout.indexSize;
+    m_vertexSpecs.emplace(StringId(newElSpec.name), &glTypeSpec);
 }
 
-void OpenGLRenderer::specifyTextureSampler(StringView colorName)
+void OpenGLRenderer::specifyTextureSampler(StringView colorName, const TypeInfo &texturePtrInfo)
 {
     StringId id = StringId(colorName);
     if (m_specifiedColorNames.find(id) == m_specifiedColorNames.end()) {
@@ -378,7 +409,7 @@ void OpenGLRenderer::specifyTextureSampler(StringView colorName)
             m_root.getComponent<ShaderSnippetKeeper>().new_asset_k<ShaderSnippet::StringParams>({
                 .inputSpecs =
                     {
-                        {"tex_" + std::string(colorName), TYPE_INFO<dynasma::FirmPtr<Texture>>},
+                        {"tex_" + std::string(colorName), texturePtrInfo},
                         {"coord_" + std::string(colorName), TYPE_INFO<glm::vec3>},
                     },
                 .outputSpecs =
@@ -392,30 +423,24 @@ void OpenGLRenderer::specifyTextureSampler(StringView colorName)
     }
 }
 
-std::size_t OpenGLRenderer::getNumVertexBuffers() const
+std::size_t OpenGLRenderer::getNumVertexSpecs() const
 {
-    return m_vertexBufferIndices.size();
+    return m_vertexLayoutIndices.size();
 }
 
-std::size_t OpenGLRenderer::getVertexBufferLayoutIndex(StringId name) const
+std::size_t OpenGLRenderer::getVertexLayoutIndex(StringId name) const
 {
-    return m_vertexBufferIndices.at(name);
+    return m_vertexLayoutIndices.at(name);
 }
 
-const StableMap<StringId, const GLTypeSpec *> &OpenGLRenderer::getAllVertexBufferSpecs() const
+const StableMap<StringId, const GLTypeSpec *> &OpenGLRenderer::getAllVertexSpecs() const
 {
-    return m_vertexBufferSpecs;
+    return m_vertexSpecs;
 }
 
-void OpenGLRenderer::setRawBufferBinding(const RawSharedBuffer &buf, int bindingIndex)
+dynasma::FirmPtr<Material> OpenGLRenderer::getDefaultMaterial() const
 {
-    const OpenGLRawSharedBuffer &glbuf = static_cast<const OpenGLRawSharedBuffer &>(buf);
-
-    if (!glbuf.isSynchronized()) {
-        throw std::runtime_error("OpenGLRawSharedBuffer is not synchronized");
-    }
-
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, glbuf.getGlBufferHandle());
+    return *mnp_defaultMaterial;
 }
 
 } // namespace Vitrae

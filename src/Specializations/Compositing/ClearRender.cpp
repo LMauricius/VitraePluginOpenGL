@@ -85,14 +85,14 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
     GLbitfield clearMask = 0;
 
     std::size_t attachmentIndex = 0;
-    for (auto &texSpec : frame.getOutputTextureSpecs()) {
+    for (auto &texSpec : frame.getRenderTextureSpecs()) {
 
         // Either set the clear color for standard buffers, or clear buffer
         // manually
         std::visit(Overloaded{
                        [&](const FixedRenderComponent &comp) {
                            switch (comp) {
-                           case FixedRenderComponent::Depth:
+                           case FixedRenderComponent::DEPTH:
                                // Check the color type
                                std::visit(Overloaded{
                                               [&](const FixedClearColor &colInd) {
@@ -154,7 +154,8 @@ void OpenGLComposeClearRender::run(RenderComposeContext args) const
                                                   case FixedClearColor::Default:
                                                       // default is black
                                                       glClearBufferfv(GL_COLOR, attachmentIndex,
-                                                                      (const GLfloat[]){0.0f, 0.0f, 0.0f, 0.0f});
+                                                                      (const GLfloat[]){
+                                                                          0.0f, 0.0f, 0.0f, 0.0f});
                                                       break;
                                                   }
                                               },

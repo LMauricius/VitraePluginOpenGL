@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Vitrae/Assets/Texture.hpp"
-#include "VitraePluginOpenGL/Specializations/TensorBuffer.hpp"
+#include "VitraePluginOpenGL/Specializations/PixelImage.hpp"
+#include "dynasma/pointer.hpp"
+#include "dynasma/standalone.hpp"
 #include "glad/glad.h"
 
 namespace Vitrae
@@ -9,279 +11,383 @@ namespace Vitrae
 
 // ==== Texture mix-ins ============================================================================
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture1D : public Texture1D<TBUFFER_TYPE>, public OpenGLTexture1DBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture1D : public dynasma::PtrAwareBase, public Texture1D<TPIXEL_TYPE>
 {
   public:
-    OpenGLTexture1D(const Texture1D<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImage1D<TPIXEL_TYPE>;
+
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture1D<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture1D<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture1D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture1D<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTexture1D(const Texture1D<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTexture1D(const Texture1D<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
-};
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture2D : public Texture2D<TBUFFER_TYPE>, public OpenGLTexture2DBit
-{
-  public:
-    OpenGLTexture2D(const Texture2D<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTexture2D(const Texture2D<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTexture2D(const Texture2D<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+
+    unsigned int getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For Texture1D ----------------------------------------
+
+    dynasma::PinPtr<PixelImage1D<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImage1D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture3D : public Texture3D<TBUFFER_TYPE>, public OpenGLTexture3DBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture2D : public dynasma::PtrAwareBase, public Texture2D<TPIXEL_TYPE>
 {
   public:
-    OpenGLTexture3D(const Texture3D<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImage2D<TPIXEL_TYPE>;
+
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture2D<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture2D<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture2D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture2D<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTexture3D(const Texture3D<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTexture3D(const Texture3D<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+
+    glm::uvec2 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For Texture2D ----------------------------------------
+
+    dynasma::PinPtr<PixelImage2D<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImage2D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTextureCube : public TextureCubemap<TBUFFER_TYPE>, public OpenGLTextureCubeBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture3D : public dynasma::PtrAwareBase, public Texture3D<TPIXEL_TYPE>
 {
   public:
-    OpenGLTextureCube(const TextureCubemap<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImage3D<TPIXEL_TYPE>;
+
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture3D<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture3D<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture3D(dynasma::PolymorphicReferenceCounter *p_ctr,
+                    const Texture3D<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTextureCube(const TextureCubemap<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTextureCube(const TextureCubemap<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+
+    glm::uvec3 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For Texture3D ----------------------------------------
+
+    dynasma::PinPtr<PixelImage3D<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImage3D<TPIXEL_TYPE>> getImage() const override { return p_buffer; }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture1DLayered : public Texture1DLayered<TBUFFER_TYPE>,
-                               public OpenGLTexture1DLayeredBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTextureCube : public dynasma::PtrAwareBase, public TextureCubemap<TPIXEL_TYPE>
 {
   public:
-    OpenGLTexture1DLayered(const Texture1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImageCube<TPIXEL_TYPE>;
+
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
+                      const TextureCubemap<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
+                      const TextureCubemap<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTextureCube(dynasma::PolymorphicReferenceCounter *p_ctr,
+                      const TextureCubemap<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTexture1DLayered(const Texture1DLayered<TBUFFER_TYPE>::EmptyParams &params)
+
+    glm::uvec3 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For TextureCubemap ----------------------------------------
+
+    dynasma::PinPtr<Texture2D<TPIXEL_TYPE>> getFace(Side side) override
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
+        /// TODO: something
     }
-    OpenGLTexture1DLayered(const Texture1DLayered<TBUFFER_TYPE>::PureColorParams &params)
+
+    dynasma::PinPtr<const Texture2D<TPIXEL_TYPE>> getFace(Side side) const override
     {
-        setupFromColor(params.storageFormat, &params.color);
+        /// TODO: something
     }
+
+    dynasma::PinPtr<PixelImageCubemap<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImageCubemap<TPIXEL_TYPE>> getImage() const override
+    {
+        return p_buffer;
+    }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTexture2DLayered : public Texture2DLayered<TBUFFER_TYPE>,
-                               public OpenGLTexture2DLayeredBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture1DLayered : public dynasma::PtrAwareBase, public Texture1DLayered<TPIXEL_TYPE>
 {
   public:
-    OpenGLTexture2DLayered(const Texture2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImage1DLayered<TPIXEL_TYPE>;
+
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture1DLayered<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture1DLayered<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture1DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture1DLayered<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTexture2DLayered(const Texture2DLayered<TBUFFER_TYPE>::EmptyParams &params)
+
+    glm::uvec2 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For Texture1DLayered ----------------------------------------
+
+    dynasma::PinPtr<Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
+        /// TODO: something
     }
-    OpenGLTexture2DLayered(const Texture2DLayered<TBUFFER_TYPE>::PureColorParams &params)
+
+    dynasma::PinPtr<const Texture1D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
-        setupFromColor(params.storageFormat, &params.color);
+        /// TODO: something
     }
+
+    dynasma::PinPtr<PixelImage1DLayered<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImage1DLayered<TPIXEL_TYPE>> getImage() const override
+    {
+        return p_buffer;
+    }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTextureCubeLayered : public TextureCubemapLayered<TBUFFER_TYPE>,
-                                 public OpenGLTextureCubeLayeredBit
+template <PixelType TPIXEL_TYPE>
+class OpenGLTexture2DLayered : public dynasma::PtrAwareBase, public Texture2DLayered<TPIXEL_TYPE>
 {
   public:
-    OpenGLTextureCubeLayered(const TextureCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
+    using ImageT = OpenGLPixelImage2DLayered<TPIXEL_TYPE>;
+
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture2DLayered<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture2DLayered<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTexture2DLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                           const Texture2DLayered<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTextureCubeLayered(const TextureCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
+
+    glm::uvec3 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For Texture2DLayered ----------------------------------------
+
+    dynasma::PinPtr<Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
+        /// TODO: something
     }
-    OpenGLTextureCubeLayered(const TextureCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
+
+    dynasma::PinPtr<const Texture2D<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
-        setupFromColor(params.storageFormat, &params.color);
+        /// TODO: something
     }
+
+    dynasma::PinPtr<PixelImage2DLayered<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImage2DLayered<TPIXEL_TYPE>> getImage() const override
+    {
+        return p_buffer;
+    }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-// ==== TensorBuffer mix-ins =======================================================================
+template <PixelType TPIXEL_TYPE>
+class OpenGLTextureCubeLayered : public dynasma::PtrAwareBase,
+                                 public TextureCubemapLayered<TPIXEL_TYPE>
+{
+  public:
+    using ImageT = OpenGLPixelImageCubeLayered<TPIXEL_TYPE>;
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBuffer1D : public TensorBuffer1D<TBUFFER_TYPE>, public OpenGLTexture1DBit
-{
-  public:
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBuffer1D(const TensorBuffer1D<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
-};
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBuffer2D : public TensorBuffer2D<TBUFFER_TYPE>, public OpenGLTexture2DBit
-{
-  public:
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBuffer2D(const TensorBuffer2D<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
-};
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                             const TextureCubemapLayered<TPIXEL_TYPE>::FileLoadParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                             const TextureCubemapLayered<TPIXEL_TYPE>::EmptyParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
+    OpenGLTextureCubeLayered(dynasma::PolymorphicReferenceCounter *p_ctr,
+                             const TextureCubemapLayered<TPIXEL_TYPE>::PureColorParams &params)
+        : dynasma::PtrAwareBase(p_ctr), p_buffer{dynasma::makeStandalone<ImageT>(params)}
+    {}
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBuffer3D : public TensorBuffer3D<TBUFFER_TYPE>, public OpenGLTexture3DBit
-{
-  public:
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::FileLoadParams &params)
+    // ---- For dynasma ----------------------------------------
+
+    std::size_t memory_cost() const override { return p_buffer->memory_cost() + sizeof(*this); }
+
+    // ---- For TextureBaseTyped ----------------------------------------
+
+    CompatiblePixelFormat<TPIXEL_TYPE> getPixelFormat() const override
     {
-        setupFromFile(TBUFFER_TYPE, params);
+        return p_buffer->getPixelFormat();
     }
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::EmptyParams &params)
+
+    glm::uvec4 getSize() const override { return p_buffer->getSize(); }
+
+    // ---- For TextureCubemapLayered ----------------------------------------
+
+    dynasma::PinPtr<TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) override
     {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
+        /// TODO: something
     }
-    OpenGLTensorBuffer3D(const TensorBuffer3D<TBUFFER_TYPE>::PureColorParams &params)
+
+    dynasma::PinPtr<const TextureCubemap<TPIXEL_TYPE>> getLayer(std::size_t layer) const override
     {
-        setupFromColor(params.storageFormat, &params.color);
+        /// TODO: something
     }
+
+    dynasma::PinPtr<PixelImageCubemapLayered<TPIXEL_TYPE>> getImage() override { return p_buffer; }
+
+    dynasma::PinPtr<const PixelImageCubemapLayered<TPIXEL_TYPE>> getImage() const override
+    {
+        return p_buffer;
+    }
+
+    dynasma::FirmPtr<ImageT> p_buffer;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBufferCube : public TensorBufferCubemap<TBUFFER_TYPE>, public OpenGLTextureCubeBit
+// ==== Texture info ===============================================================================
+
+template <class TextureT> struct OpenGLTextureInfo;
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture1D<PT>>
 {
-  public:
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBufferCube(const TensorBufferCubemap<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_1D;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBuffer1DLayered : public TensorBuffer1DLayered<TBUFFER_TYPE>,
-                                    public OpenGLTexture1DLayeredBit
+template <PixelType PT> struct OpenGLTextureInfo<Texture2D<PT>>
 {
-  public:
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBuffer1DLayered(const TensorBuffer1DLayered<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_2D;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBuffer2DLayered : public TensorBuffer2DLayered<TBUFFER_TYPE>,
-                                    public OpenGLTexture2DLayeredBit
+template <PixelType PT> struct OpenGLTextureInfo<Texture3D<PT>>
 {
-  public:
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBuffer2DLayered(const TensorBuffer2DLayered<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_3D;
 };
 
-template <BufferType TBUFFER_TYPE>
-class OpenGLTensorBufferCubeLayered : public TensorBufferCubemapLayered<TBUFFER_TYPE>,
-                                      public OpenGLTextureCubeLayeredBit
+template <PixelType PT> struct OpenGLTextureInfo<TextureCubemap<PT>>
 {
-  public:
-    OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::FileLoadParams &params)
-    {
-        setupFromFile(TBUFFER_TYPE, params);
-    }
-    OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::EmptyParams &params)
-    {
-        setupEmpty(params.ndSize, params.storageFormat, params.swizzleSpec, params.filtering,
-                   params.friendlyName);
-    }
-    OpenGLTensorBufferCubeLayered(
-        const TensorBufferCubemapLayered<TBUFFER_TYPE>::PureColorParams &params)
-    {
-        setupFromColor(params.storageFormat, &params.color);
-    }
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_CUBE_MAP;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture1DLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_1D_ARRAY;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<Texture2DLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_2D_ARRAY;
+};
+
+template <PixelType PT> struct OpenGLTextureInfo<TextureCubemapLayered<PT>>
+{
+    constexpr static GLint TEXTURE_TARGET = GL_TEXTURE_CUBE_MAP_ARRAY;
 };
 
 } // namespace Vitrae

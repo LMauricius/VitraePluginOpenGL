@@ -34,11 +34,11 @@ class OpenGLMesh : public Mesh
         return sizeof(*this);
     }
 
-    SharedSubBufferVariantPtr getVertexComponentBuffer(StringId componentName) const override;
-    void setVertexComponentBuffer(StringId componentName,
-                                  SharedSubBufferVariantPtr p_buffer) override;
+    StructSubImageVariantPtr getVertexComponentImage(StringId componentName) const override;
+    void setVertexComponentImage(StringId componentName,
+                                 StructSubImageVariantPtr p_buffer) override;
 
-    SharedBufferPtr<void, Triangle> getIndexBuffer() const override;
+    StructImagePtr<void, Triangle> getIndexImage() const override;
 
     void rasterize() const override;
 
@@ -49,8 +49,8 @@ class OpenGLMesh : public Mesh
     String m_friendlyname;
     FrontSideOrientation m_frontSideOrientation;
     BoundingBox m_aabb;
-    StableMap<StringId, SharedSubBufferVariantPtr> m_vertexComponentBuffers;
-    SharedBufferPtr<void, Triangle> m_indexBuffer;
+    StableMap<StringId, StructSubImageVariantPtr> m_vertexComponentImages;
+    StructImagePtr<void, Triangle> m_indexImage;
 
     bool m_sentToGPU;
 };

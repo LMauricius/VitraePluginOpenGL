@@ -140,7 +140,7 @@ void OpenGLComposeIndexRender::run(RenderComposeContext ctx) const
     ParamAliases combinedAliases(p_aliaseses);
 
     // Compile and setup the shader
-    dynasma::FirmPtr<CompiledGLSLShader> p_compiledShader;
+    std::optional<dynasma::FirmPtr<CompiledGLSLShader>> np_compiledShader;
     GLint gl_index4data_UniformLocation;
 
     {
@@ -150,31 +150,35 @@ void OpenGLComposeIndexRender::run(RenderComposeContext ctx) const
         {
             MMETER_SCOPE_PROFILER("Shader loading");
 
-            p_compiledShader = shaderCacher.retrieve_asset({CompiledGLSLShader::SurfaceShaderParams(
-                combinedAliases, m_params.rasterizing.vertexPositionOutputPropertyName,
-                *frame.getRenderComponents(), m_params.root)});
+            np_compiledShader =
+                shaderCacher.retrieve_asset({CompiledGLSLShader::SurfaceShaderParams(
+                    combinedAliases, m_params.rasterizing.vertexPositionOutputPropertyName,
+                    *frame.getRenderComponents(), m_params.root)});
 
             // Aliases should've already been taken into account, so use properties directly
             VariantScope &directProperties = ctx.properties.getUnaliasedScope();
 
             // Store pipeline property specs
-            needsRebuild |= (specsContainer.inputSpecs.merge(p_compiledShader->inputSpecs) > 0);
-            needsRebuild |= (specsContainer.filterSpecs.merge(p_compiledShader->filterSpecs) > 0);
             needsRebuild |=
-                (specsContainer.consumingSpecs.merge(p_compiledShader->consumingSpecs) > 0);
+                (specsContainer.inputSpecs.merge(np_compiledShader.value()->inputSpecs) > 0);
+            needsRebuild |=
+                (specsContainer.filterSpecs.merge(np_compiledShader.value()->filterSpecs) > 0);
+            needsRebuild |= (specsContainer.consumingSpecs.merge(
+                                 np_compiledShader.value()->consumingSpecs) > 0);
 
             if (needsRebuild) {
                 throw ComposeTaskRequirementsChangedException();
             }
 
-            if (auto it = p_compiledShader->uniformSpecs.find(StandardParam::index4data.name);
-                it != p_compiledShader->uniformSpecs.end()) {
-                    gl_index4data_UniformLocation = (*it).second.location;
+            if (auto it =
+                    np_compiledShader.value()->uniformSpecs.find(StandardParam::index4data.name);
+                it != np_compiledShader.value()->uniformSpecs.end()) {
+                gl_index4data_UniformLocation = (*it).second.location;
             } else {
                 gl_index4data_UniformLocation = -1;
             }
 
-            glUseProgram(p_compiledShader->programGLName);
+            glUseProgram(np_compiledShader.value()->programGLName);
         }
 
         // Aliases should've already been taken into account, so use properties directly
@@ -183,13 +187,13 @@ void OpenGLComposeIndexRender::run(RenderComposeContext ctx) const
         {
             MMETER_SCOPE_PROFILER("Uniform setup");
 
-            p_compiledShader->setupProperties(rend, directProperties, *p_mat);
+            np_compiledShader.value()->setupProperties(rend, directProperties, *p_mat);
         }
     }
     {
         MMETER_SCOPE_PROFILER("Shape loading");
 
-        p_shape->prepareComponents(p_compiledShader->vertexComponentSpecs);
+        p_shape->prepareComponents(np_compiledShader.value()->vertexComponentSpecs);
         p_shape->loadToGPU(rend);
     }
 

@@ -1,12 +1,12 @@
-#include "VitraePluginOpenGL/Specializations/SharedBuffer.hpp"
+#include "VitraePluginOpenGL/Specializations/BinaryImage.hpp"
 
 #include "MMeter.h"
 
 namespace Vitrae
 {
 
-OpenGLRawSharedBuffer::OpenGLRawSharedBuffer(const SetupParams &params)
-    : RawSharedBuffer(), m_usage(params.usage)
+OpenGLBinaryImage::OpenGLBinaryImage(const SetupParams &params)
+    : BinaryImage(), m_usage(params.usage)
 {
     glGenBuffers(1, &m_glBufferHandle);
     String glLabel = String("Buffer ") + params.friendlyName;
@@ -15,18 +15,18 @@ OpenGLRawSharedBuffer::OpenGLRawSharedBuffer(const SetupParams &params)
     if (params.size > 0) {
         resize(params.size);
 
-        if (m_usage & BufferUsageHint::HOST_INIT) {
-            requestBufferPtr();
+        if (m_usage & ImageUsageHint::HOST_INIT) {
+            requestDataPtr();
         }
     }
 }
 
-OpenGLRawSharedBuffer::~OpenGLRawSharedBuffer()
+OpenGLBinaryImage::~OpenGLBinaryImage()
 {
     glDeleteBuffers(1, &m_glBufferHandle);
 }
 
-void OpenGLRawSharedBuffer::synchronize()
+void OpenGLBinaryImage::synchronize()
 {
     if (m_bufferPtr) {
         glUnmapNamedBuffer(m_glBufferHandle);
@@ -43,12 +43,12 @@ void OpenGLRawSharedBuffer::synchronize()
     }
 }
 
-bool OpenGLRawSharedBuffer::isSynchronized() const
+bool OpenGLBinaryImage::isSynchronized() const
 {
     return m_bufferPtr == nullptr || m_dirtySpan.first == m_dirtySpan.second;
 }
 
-void OpenGLRawSharedBuffer::requestBufferPtr() const
+void OpenGLBinaryImage::requestDataPtr() const
 {
     if (!m_bufferPtr) {
         m_bufferPtr = (Byte *)glMapNamedBuffer(m_glBufferHandle, GL_READ_WRITE);
@@ -56,7 +56,7 @@ void OpenGLRawSharedBuffer::requestBufferPtr() const
     }
 }
 
-void OpenGLRawSharedBuffer::requestResizeBuffer(std::size_t size) const
+void OpenGLBinaryImage::requestResizeData(std::size_t size) const
 {
     // have to unmap to do GL operations on it
     if (m_bufferPtr) {
@@ -68,7 +68,7 @@ void OpenGLRawSharedBuffer::requestResizeBuffer(std::size_t size) const
     glBindBuffer(getGlTarget(), 0);
 }
 
-GLenum OpenGLRawSharedBuffer::getGlUsage() const
+GLenum OpenGLBinaryImage::getGlUsage() const
 {
     enum {
         STREAM,
@@ -84,17 +84,17 @@ GLenum OpenGLRawSharedBuffer::getGlUsage() const
                                             {GL_STATIC_DRAW, GL_STATIC_READ, GL_STATIC_COPY},
                                             {GL_DYNAMIC_DRAW, GL_DYNAMIC_READ, GL_DYNAMIC_COPY}};
 
-    if (m_usage & (BufferUsageHint::HOST_WRITE | BufferUsageHint::GPU_COMPUTE)) {
+    if (m_usage & (ImageUsageHint::HOST_WRITE | ImageUsageHint::GPU_COMPUTE)) {
         frequency = DYNAMIC;
-    } else if (m_usage & (BufferUsageHint::HOST_READ | BufferUsageHint::GPU_DRAW)) {
+    } else if (m_usage & (ImageUsageHint::HOST_READ | ImageUsageHint::GPU_DRAW)) {
         frequency = STATIC;
     } else {
         frequency = STREAM;
     }
 
-    if (m_usage & BufferUsageHint::GPU_DRAW) {
+    if (m_usage & ImageUsageHint::GPU_DRAW) {
         nature = DRAW;
-    } else if (m_usage & BufferUsageHint::HOST_READ) {
+    } else if (m_usage & ImageUsageHint::HOST_READ) {
         nature = READ;
     } else {
         nature = COPY;
@@ -103,7 +103,7 @@ GLenum OpenGLRawSharedBuffer::getGlUsage() const
     return combinedUsage[frequency][nature];
 }
 
-GLenum OpenGLRawSharedBuffer::getGlTarget() const
+GLenum OpenGLBinaryImage::getGlTarget() const
 {
     constexpr GLint maxUBOSize = 16000; // ~16kb
     /*
@@ -114,14 +114,14 @@ GLenum OpenGLRawSharedBuffer::getGlTarget() const
         return size;
     }();
     */
-    if (m_size >= maxUBOSize || m_usage & BufferUsageHint::GPU_COMPUTE) {
+    if (m_size >= maxUBOSize || m_usage & ImageUsageHint::GPU_COMPUTE) {
         return GL_SHADER_STORAGE_BUFFER;
     } else {
         return GL_UNIFORM_BUFFER;
     }
 }
 
-std::size_t OpenGLRawSharedBuffer::memory_cost() const
+std::size_t OpenGLBinaryImage::memory_cost() const
 {
     return sizeof(*this) + m_size;
 }

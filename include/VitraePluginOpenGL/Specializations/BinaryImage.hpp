@@ -1,17 +1,17 @@
 #pragma once
 
-#include "Vitrae/Assets/SharedBuffer.hpp"
+#include "Vitrae/Assets/BinaryImage.hpp"
 
 #include "glad/glad.h"
 
 namespace Vitrae
 {
 
-class OpenGLRawSharedBuffer : public RawSharedBuffer
+class OpenGLBinaryImage : public BinaryImage
 {
   public:
-    OpenGLRawSharedBuffer(const SetupParams &params);
-    ~OpenGLRawSharedBuffer();
+    OpenGLBinaryImage(const SetupParams &params);
+    ~OpenGLBinaryImage();
 
     void synchronize() override;
     bool isSynchronized() const override;
@@ -20,14 +20,14 @@ class OpenGLRawSharedBuffer : public RawSharedBuffer
     inline GLuint getGlBufferHandle() const { return m_glBufferHandle; }
 
   private:
-    void requestBufferPtr() const override;
-    void requestResizeBuffer(std::size_t size) const override;
+    void requestDataPtr() const override;
+    void requestResizeData(std::size_t size) const override;
 
     GLenum getGlUsage() const;
     GLenum getGlTarget() const;
 
     GLuint m_glBufferHandle;
-    BufferUsageHints m_usage;
+    ImageUsageHints m_usage;
 };
 
 } // namespace Vitrae

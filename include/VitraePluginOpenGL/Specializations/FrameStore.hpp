@@ -15,18 +15,18 @@ namespace Vitrae
 class OpenGLFrameStore : public FrameStore
 {
   public:
-    OpenGLFrameStore(const FrameStore::TextureBindParams &params);
+    OpenGLFrameStore(const TextureBindParams &params);
     OpenGLFrameStore(const WindowDisplayParams &params);
     ~OpenGLFrameStore() override;
 
     std::size_t memory_cost() const override;
 
     void resize(glm::vec2 size) override;
-    void bindOutput(const OutputTextureSpec &spec) override;
+    void bindOutput(const RenderTextureSpec &spec) override;
 
     glm::uvec2 getSize() const override;
     dynasma::FirmPtr<const ParamList> getRenderComponents() const override;
-    std::span<const OutputTextureSpec> getOutputTextureSpecs() const override;
+    std::span<const RenderTextureSpec> getRenderTextureSpecs() const override;
 
     void sync(bool vsync) override;
 
@@ -35,7 +35,7 @@ class OpenGLFrameStore : public FrameStore
 
   protected:
     dynasma::FirmPtr<const ParamList> mp_renderComponents;
-    std::vector<OutputTextureSpec> m_outputTextureSpecs;
+    std::vector<RenderTextureSpec> m_renderTextureSpecs;
 
     std::vector<ParamSpec> m_renderComponents;
     std::size_t m_colorAttachmentUnusedIndex;
